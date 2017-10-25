@@ -1,4 +1,4 @@
-package com.miraisolutions.bigquery
+package com.miraisolutions.spark.bigquery
 
 import com.google.cloud.hadoop.io.bigquery.BigQueryStrings
 import com.spotify.spark.bigquery._

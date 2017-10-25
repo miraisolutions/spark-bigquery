@@ -1,4 +1,4 @@
-package com.miraisolutions.bigquery
+package com.miraisolutions.spark.bigquery
 
 /**
   * Exception to be thrown in case of a missing parameter
