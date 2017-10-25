@@ -3,6 +3,7 @@ package com.miraisolutions.spark.bigquery
 import com.google.cloud.hadoop.io.bigquery.BigQueryStrings
 import com.spotify.spark.bigquery._
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions
 import org.apache.spark.sql.sources._
 
 class DefaultSource extends RelationProvider {
@@ -17,7 +18,8 @@ class DefaultSource extends RelationProvider {
       )
     ) { tableReference =>
       val ref = BigQueryStrings.parseTableReference(tableReference)
-      BigQuerySourceRelation(ref, sqlContext, parts, jdbcOptions)
+      val jdbcOptions = new JDBCOptions(parameters)
+      BigQuerySourceRelation(ref, sqlContext, jdbcOptions)
     }
   }
 }

@@ -2,7 +2,6 @@ package com.miraisolutions.spark.bigquery
 
 import com.google.api.services.bigquery.model.TableReference
 import com.spotify.spark.bigquery._
-import org.apache.spark.Partition
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD}
 import org.apache.spark.sql.sources.{BaseRelation, Filter, PrunedFilteredScan}
@@ -18,7 +17,6 @@ import org.apache.spark.sql.{Row, SQLContext}
 private[bigquery] case class BigQuerySourceRelation(
     tableRef: TableReference,
     sqlContext: SQLContext,
-    parts: Array[Partition],
     jdbcOptions: JDBCOptions)
   extends BaseRelation with PrunedFilteredScan {
 
@@ -26,14 +24,13 @@ private[bigquery] case class BigQuerySourceRelation(
 
   override def schema: StructType = table.schema
 
-  // TODO: Implement pruning/filtering; see also JDBCRDD
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     JDBCRDD.scanTable(
       sqlContext.sparkSession.sparkContext,
       schema,
       requiredColumns,
       filters,
-      parts,
+      table.rdd.partitions,
       jdbcOptions).asInstanceOf[RDD[Row]]
   }
 }
