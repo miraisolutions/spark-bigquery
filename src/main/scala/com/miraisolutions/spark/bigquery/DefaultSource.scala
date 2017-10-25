@@ -17,7 +17,7 @@ class DefaultSource extends RelationProvider {
       )
     ) { tableReference =>
       val ref = BigQueryStrings.parseTableReference(tableReference)
-      BigQuerySourceRelation(ref, sqlContext)
+      BigQuerySourceRelation(ref, sqlContext, parts, jdbcOptions)
     }
   }
 }
