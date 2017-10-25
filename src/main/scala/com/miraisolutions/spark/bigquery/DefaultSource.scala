@@ -18,7 +18,7 @@ class DefaultSource extends RelationProvider {
       )
     ) { tableReference =>
       val ref = BigQueryStrings.parseTableReference(tableReference)
-      val params = parameters + ("url" -> "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443")
+      val params = parameters + ("url" -> "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443") + ("dbtable" -> ref.getTableId)
       val jdbcOptions = new JDBCOptions(params)
       BigQuerySourceRelation(ref, sqlContext, jdbcOptions)
     }
