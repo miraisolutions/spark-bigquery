@@ -2,7 +2,7 @@ name := "spark-bigquery"
 
 organization := "com.miraisolutions"
 
-version := "0.2-SNAPSHOT"
+version := "0.1.0-SNAPSHOT"
 
 scalaVersion := "2.11.11"
 
@@ -11,8 +11,7 @@ resolvers += Opts.resolver.sonatypeReleases
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
   "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
-  "org.jgrapht" % "jgrapht-core" % "1.0.1",
-  "org.scalatest" %% "scalatest" % "3.0.1" % "test",
+  "org.scalatest" %% "scalatest" % "3.0.4" % "test",
   // Exclude jackson dependency due to version mismatch between bigquery connector and Spark
   "com.spotify" %% "spark-bigquery" % "0.2.1" exclude ("com.fasterxml.jackson.core", "jackson-core")
 )
@@ -27,6 +26,3 @@ assemblyMergeStrategy in assembly := {
   case PathList("META-INF", _) => MergeStrategy.discard
   case _ => MergeStrategy.first
 }
-
-retrieveManaged := true
-retrievePattern := "[organisation]-[module]-[artifact](-[revision])(-[classifier]).[ext]"
