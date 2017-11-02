@@ -1,6 +1,6 @@
 # spark-bigquery
 
-This project provides a Spark data source (`com.miraisolutions.spark.bigquery.DefaultSource`) for Google BigQuery on top of [Spotify's spark-bigquery library](https://github.com/spotify/spark-bigquery).
+This project provides a Google BigQuery data source (`com.miraisolutions.spark.bigquery.DefaultSource`) to Spark on top of [Spotify's spark-bigquery library](https://github.com/spotify/spark-bigquery).
 
 This data source is used in the [sparkbq](https://github.com/miraisolutions/sparkbq) R package.
 
