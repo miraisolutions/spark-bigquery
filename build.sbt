@@ -26,7 +26,7 @@ assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeSca
 // Shade google guava dependency due to version mismatch between bigquery connector and Spark
 // See https://github.com/spotify/spark-bigquery/issues/12
 assemblyShadeRules in assembly := Seq(
-  ShadeRule.rename("com.google.**" -> "shadeio.@1").inAll
+  ShadeRule.rename("com.google.common.**" -> "shadegooglecommon.@1").inAll
 )
 
 assemblyMergeStrategy in assembly := {
@@ -56,7 +56,7 @@ proguardOptions in Proguard ++=
       |}""".stripMargin,
     // "-keep class org.apache.avro.** { *; }",
     // "-keep class com.databricks.spark.avro.** { *; }",
-    "-keep class shadeio.cloud.hadoop.** { *; }",
+    "-keep class com.google.cloud.hadoop.** { *; }",
     "-keep class com.spotify.spark.bigquery.** { *; }",
     "-keep class com.miraisolutions.spark.bigquery.DefaultSource { *; }"
   )
