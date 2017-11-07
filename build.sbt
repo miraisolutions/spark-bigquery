@@ -15,10 +15,11 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
   "org.scalatest" %% "scalatest" % "3.0.4" % "test",
   // Exclude jackson dependency due to version mismatch between bigquery connector and Spark
-  "com.spotify" %% "spark-bigquery" % "0.2.1" excludeAll(
-    ExclusionRule("com.fasterxml.jackson.core", "jackson-core"),
-    ExclusionRule("commons-logging", "commons-logging")
-  )
+  "com.spotify" %% "spark-bigquery" % "0.2.2-SNAPSHOT" excludeAll(
+    ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
+    ExclusionRule("commons-logging", "commons-logging") // clashes with Spark 2.2.x
+  ) //,
+  // "com.databricks" %% "spark-avro" % "4.0.0" // need newer Spark 2.2.x compatible version
 )
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
@@ -31,7 +32,8 @@ assemblyShadeRules in assembly := Seq(
 
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", _) => MergeStrategy.discard
-  case _ => MergeStrategy.first
+  case PathList("com", "databricks", "spark", "avro", xs @ _*) => MergeStrategy.first
+  case _ => MergeStrategy.singleOrError
 }
 
 // https://github.com/sbt/sbt-proguard/issues/23
@@ -54,8 +56,8 @@ proguardOptions in Proguard ++=
       |    public static **[] values();
       |    public static ** valueOf(java.lang.String);
       |}""".stripMargin,
-    // "-keep class org.apache.avro.** { *; }",
-    // "-keep class com.databricks.spark.avro.** { *; }",
+    "-keep class org.apache.avro.** { *; }",
+    "-keep class com.databricks.spark.avro.** { *; }",
     "-keep class com.google.cloud.hadoop.** { *; }",
     "-keep class com.spotify.spark.bigquery.** { *; }",
     "-keep class com.miraisolutions.spark.bigquery.DefaultSource { *; }"
