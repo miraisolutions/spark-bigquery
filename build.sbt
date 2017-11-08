@@ -33,7 +33,20 @@ assemblyShadeRules in assembly := Seq(
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", _) => MergeStrategy.discard
   case PathList("com", "databricks", "spark", "avro", xs @ _*) => MergeStrategy.first
+  //case PathList("org", "apache", "avro", "avro-ipc", xs @ _*) => MergeStrategy.first
   case _ => MergeStrategy.singleOrError
+}
+
+// yet another fat jar issue
+// java.lang.RuntimeException: singleOrError: found multiple files for same target path:
+// org.apache.avro/avro-ipc/jars/avro-ipc-1.7.7-tests.jar:META-INF/maven/org.apache.avro/avro-ipc/pom.properties
+// org.apache.avro/avro-ipc/jars/avro-ipc-1.7.7.jar:META-INF/maven/org.apache.avro/avro-ipc/pom.properties
+// singleOrError: found multiple files for same target path:
+// org.apache.avro/avro-ipc/jars/avro-ipc-1.7.7-tests.jar:META-INF/maven/org.apache.avro/avro-ipc/pom.xml
+// org.apache.avro/avro-ipc/jars/avro-ipc-1.7.7.jar:META-INF/maven/org.apache.avro/avro-ipc/pom.xml
+assemblyExcludedJars in assembly := {
+  val cp = (fullClasspath in assembly).value
+  cp filter {_.data.getName == "avro-ipc-1.7.7-tests.jar"}
 }
 
 // https://github.com/sbt/sbt-proguard/issues/23
