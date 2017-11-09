@@ -8,7 +8,10 @@ import org.apache.spark.sql.sources._
 /**
   * Google BigQuery default data source
   */
-class DefaultSource extends RelationProvider with CreatableRelationProvider {
+class DefaultSource extends RelationProvider with CreatableRelationProvider with DataSourceRegister {
+
+  /** Short name for data source */
+  override def shortName(): String = "bigquery"
 
   /**
     * Sets BigQuery connection parameters on the Spark {{SQLContext}}

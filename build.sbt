@@ -14,12 +14,12 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
   "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
   "org.scalatest" %% "scalatest" % "3.0.4" % "test",
-  // Exclude jackson dependency due to version mismatch between bigquery connector and Spark
+  // TODO: use released version once available;
+  // currently using (local) SNAPSHOT version with spark-avro 4.0.0
   "com.spotify" %% "spark-bigquery" % "0.2.2-SNAPSHOT" excludeAll(
     ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
     ExclusionRule("commons-logging", "commons-logging") // clashes with Spark 2.2.x
-  ) //,
-  // "com.databricks" %% "spark-avro" % "4.0.0" // need newer Spark 2.2.x compatible version
+  )
 )
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
@@ -31,22 +31,20 @@ assemblyShadeRules in assembly := Seq(
 )
 
 assemblyMergeStrategy in assembly := {
-  case PathList("META-INF", _) => MergeStrategy.discard
-  case PathList("com", "databricks", "spark", "avro", xs @ _*) => MergeStrategy.first
-  //case PathList("org", "apache", "avro", "avro-ipc", xs @ _*) => MergeStrategy.first
-  case _ => MergeStrategy.singleOrError
+  case PathList("META-INF", _) =>
+    MergeStrategy.discard
+  case PathList("com", "databricks", "spark", "avro", xs @ _*) =>
+    // NOTE: "com.spotify" %% "spark-bigquery" provides a modified implementation of
+    // com.databricks.spark.avro.SchemaConverters
+    MergeStrategy.first
+  case _ =>
+    MergeStrategy.singleOrError
 }
 
-// yet another fat jar issue
-// java.lang.RuntimeException: singleOrError: found multiple files for same target path:
-// org.apache.avro/avro-ipc/jars/avro-ipc-1.7.7-tests.jar:META-INF/maven/org.apache.avro/avro-ipc/pom.properties
-// org.apache.avro/avro-ipc/jars/avro-ipc-1.7.7.jar:META-INF/maven/org.apache.avro/avro-ipc/pom.properties
-// singleOrError: found multiple files for same target path:
-// org.apache.avro/avro-ipc/jars/avro-ipc-1.7.7-tests.jar:META-INF/maven/org.apache.avro/avro-ipc/pom.xml
-// org.apache.avro/avro-ipc/jars/avro-ipc-1.7.7.jar:META-INF/maven/org.apache.avro/avro-ipc/pom.xml
+// Exclude avro-ipc tests jar
 assemblyExcludedJars in assembly := {
   val cp = (fullClasspath in assembly).value
-  cp filter {_.data.getName == "avro-ipc-1.7.7-tests.jar"}
+  cp filter { _.data.getName == "avro-ipc-1.7.7-tests.jar" }
 }
 
 // https://github.com/sbt/sbt-proguard/issues/23

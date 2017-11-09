@@ -9,10 +9,6 @@ import org.apache.spark.sql.{DataFrame, SQLContext}
   * @param sqlQuery BigQuery standard SQL query in SQL-2011 dialect
   * @param sqlContext Spark SQL context
   */
-private final case class BigQuerySqlRelation(
-    sqlQuery: String,
-    sqlContext: SQLContext)
-  extends BaseDataFrameRelation {
-
+private final case class BigQuerySqlRelation(sqlQuery: String, sqlContext: SQLContext) extends BaseDataFrameRelation {
   override protected lazy val dataFrame: DataFrame = sqlContext.bigQuerySelect(sqlQuery)
 }

@@ -8,8 +8,8 @@ import org.apache.spark.sql.types.StructType
 /**
   * Base relation for sources providing Spark DataFrames
   */
-private abstract class BaseDataFrameRelation
-  extends BaseRelation with TableScan with PrunedScan {
+private abstract class BaseDataFrameRelation extends BaseRelation with TableScan with PrunedScan {
+
   /** Spark DataFrame */
   protected def dataFrame: DataFrame
 

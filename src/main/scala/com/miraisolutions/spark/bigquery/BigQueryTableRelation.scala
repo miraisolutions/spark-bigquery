@@ -6,14 +6,12 @@ import org.apache.spark.sql.sources.InsertableRelation
 import org.apache.spark.sql.{DataFrame, SQLContext}
 
 /**
- * Relation for a Google BigQuery table
- *
- * @param tableRef BigQuery table reference
- * @param sqlContext Spark SQL context
- */
-private final case class BigQueryTableRelation(
-    tableRef: TableReference,
-    sqlContext: SQLContext)
+  * Relation for a Google BigQuery table
+  *
+  * @param tableRef BigQuery table reference
+  * @param sqlContext Spark SQL context
+  */
+private final case class BigQueryTableRelation(tableRef: TableReference, sqlContext: SQLContext)
   extends BaseDataFrameRelation with InsertableRelation {
 
   override protected lazy val dataFrame: DataFrame = sqlContext.bigQueryTable(tableRef)
