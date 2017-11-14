@@ -19,9 +19,16 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
     * @param parameters Connection parameters
     */
   protected def setBigQueryContext(sqlContext: SQLContext, parameters: Map[String, String]): Unit = {
-    parameters.get("bq.project.id").foreach(sqlContext.setBigQueryProjectId)
-    parameters.get("bq.gcs.bucket").foreach(sqlContext.setBigQueryGcsBucket)
-    parameters.get("bq.dataset.location").foreach(sqlContext.setBigQueryDatasetLocation)
+    parameters foreach {
+      case ("bq.project.id", value) =>
+        sqlContext.setBigQueryProjectId(value)
+      case ("bq.gcs.bucket", value) =>
+        sqlContext.setBigQueryGcsBucket(value)
+      case ("bq.dataset.location", value) =>
+        sqlContext.setBigQueryDatasetLocation(value)
+      case (key, value) =>
+        sqlContext.sparkContext.hadoopConfiguration.set(key, value)
+    }
   }
 
   /**
