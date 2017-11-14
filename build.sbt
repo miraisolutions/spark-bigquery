@@ -1,3 +1,9 @@
+import net.ruippeixotog.scalascraper.browser.JsoupBrowser
+import net.ruippeixotog.scalascraper.dsl.DSL._
+import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
+import com.typesafe.sbt.license.{DepModuleInfo, LicenseInfo}
+
+
 name := "spark-bigquery"
 
 organization := "com.miraisolutions"
@@ -78,3 +84,47 @@ proguardOptions in Proguard ++=
 proguardInputs in Proguard := Seq(baseDirectory.value / "target" / s"scala-${scalaVersion.value.dropRight(3)}" / s"${name.value}-assembly-${version.value}.jar")
 
 proguardMerge in Proguard := false
+
+licenseConfigurations := Set("compile")
+
+licenseOverrides := {
+  case DepModuleInfo("org.slf4j", "slf4j-simple", _) =>
+    LicenseInfo.MIT
+}
+
+val browser = JsoupBrowser()
+
+def existsUrl(url: String): Boolean = {
+  import java.net.{URL, HttpURLConnection}
+  (new URL(url)).openConnection().asInstanceOf[HttpURLConnection].getResponseCode == 200
+}
+
+// Extends license report to include artifact description and link to JAR files
+licenseReportNotes := {
+  case DepModuleInfo(group, id, version) =>
+    try {
+      // Fetch artifact information
+      val doc = browser.get(s"https://mvnrepository.com/artifact/$group/$id/$version")
+      // Extract description
+      val description = doc >> text(".im-description")
+      // Locate link to JAR file
+      val mainJar = (doc >> elementList("a.vbtn"))
+        .filter(element => element.innerHtml.startsWith("jar") || element.innerHtml.startsWith("bundle"))
+        .map(_ >> attr("href"))
+        .headOption
+        .getOrElse(throw new NoSuchElementException("Can't locate JAR file"))
+
+      // Derive link to sources JAR file
+      val sourcesJar = mainJar.replaceFirst("\\.jar$", "-sources.jar")
+
+      // Check if JAR file exists
+      require(existsUrl(mainJar), "Invalid link to JAR file")
+      // Check if sources JAR file exists
+      require(existsUrl(sourcesJar), "Invalid link to sources JAR file")
+
+      description + ";" + mainJar + ";" + sourcesJar
+    } catch {
+      case t: Throwable =>
+        "**** " + t.getMessage + " ****"
+    }
+}
