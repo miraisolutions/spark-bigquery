@@ -101,10 +101,16 @@ def existsUrl(url: String): Boolean = {
 
 // Extends license report to include artifact description and link to JAR files
 licenseReportNotes := {
+  // TODO: remove this case once the released version is available
+  case DepModuleInfo("com.spotify", "spark-bigquery_2.11", "0.2.2-SNAPSHOT") =>
+    "Spark Bigquery" + '\u001F' + "spark-bigquery" + '\u001F' +
+      "N/A (waiting for next released version integrating https://github.com/spotify/spark-bigquery/pull/47)" + '\u001F' + "N/A"
   case DepModuleInfo(group, id, version) =>
     try {
       // Fetch artifact information
       val doc = browser.get(s"https://mvnrepository.com/artifact/$group/$id/$version")
+      // Extract title
+      val title = (doc >> text(".im-title")).replaceFirst("\\s»\\s.+$", "")
       // Extract description
       val description = doc >> text(".im-description")
       // Locate link to JAR file
@@ -121,8 +127,8 @@ licenseReportNotes := {
       require(existsUrl(mainJar), "Invalid link to JAR file")
       // Check if sources JAR file exists
       require(existsUrl(sourcesJar), "Invalid link to sources JAR file")
-
-      description + ";" + mainJar + ";" + sourcesJar
+      // https://en.wikipedia.org/wiki/C0_and_C1_control_codes (unit separator)
+      title + '\u001F' + description + '\u001F' + mainJar + '\u001F' + sourcesJar
     } catch {
       case t: Throwable =>
         "**** " + t.getMessage + " ****"
