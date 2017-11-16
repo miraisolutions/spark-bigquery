@@ -81,14 +81,15 @@ proguardOptions in Proguard ++=
     "-keep class com.miraisolutions.spark.bigquery.DefaultSource { *; }"
   )
 
-proguardInputs in Proguard := Seq(baseDirectory.value / "target" / s"scala-${scalaVersion.value.dropRight(3)}" / s"${name.value}-assembly-${version.value}.jar")
+proguardInputs in Proguard := Seq(baseDirectory.value / "target" / s"scala-${scalaVersion.value.dropRight(3)}" /
+  s"${name.value}-assembly-${version.value}.jar")
 
 proguardMerge in Proguard := false
 
 licenseConfigurations := Set("compile")
 
 licenseOverrides := {
-  case DepModuleInfo("org.slf4j", "slf4j-simple", _) =>
+  case DepModuleInfo("org.slf4j", "slf4j-api", _) =>
     LicenseInfo.MIT
 }
 
@@ -104,7 +105,9 @@ licenseReportNotes := {
   // TODO: remove this case once the released version is available
   case DepModuleInfo("com.spotify", "spark-bigquery_2.11", "0.2.2-SNAPSHOT") =>
     "Spark Bigquery" + '\u001F' + "spark-bigquery" + '\u001F' +
-      "N/A (waiting for next released version integrating https://github.com/spotify/spark-bigquery/pull/47)" + '\u001F' + "N/A"
+      "N/A (waiting for next released version integrating https://github.com/spotify/spark-bigquery/pull/47)" +
+      '\u001F' + "N/A"
+
   case DepModuleInfo(group, id, version) =>
     try {
       // Fetch artifact information
