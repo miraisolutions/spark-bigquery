@@ -10,6 +10,14 @@ Due to dependency version mismatches between Apache Spark and Google client libr
 
 ProGuard may be used via the [`sbt-proguard`](https://github.com/sbt/sbt-proguard) plugin to further shrink the assembly size. Simply run `sbt proguard` to perform that step. The resulting JAR file can be found in the `target/proguard` folder.
 
+## Version Information
+
+The following table provides an overview over supported versions of Spark, Scala and [Google Dataproc](https://cloud.google.com/dataproc/docs/concepts/versioning/dataproc-versions):
+
+| spark-bigquery | Spark | Scala | Google Dataproc |
+| :-----: | ----- | ----- | --------------- |
+| 0.1.x | 2.2 | 2.11 | 1.2 |
+
 ## Example
 
 The provided Google BigQuery data source (`com.miraisolutions.spark.bigquery.DefaultSource`) can be used as follows:
