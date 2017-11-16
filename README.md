@@ -10,6 +10,25 @@ Due to dependency version mismatches between Apache Spark and Google client libr
 
 ProGuard may be used via the [`sbt-proguard`](https://github.com/sbt/sbt-proguard) plugin to further shrink the assembly size. Simply run `sbt proguard` to perform that step. The resulting JAR file can be found in the `target/proguard` folder.
 
+## Example
+
+The provided Google BigQuery data source (`com.miraisolutions.spark.bigquery.DefaultSource`) can be used as follows:
+
+``` scala
+val df = spark.read
+    .format("com.miraisolutions.spark.bigquery")
+    .option("bq.project.id", "<your_billing_project_id>")
+    .option("bq.gcs.bucket", "<your_gcs_bucket>")
+    .option("table", "bigquery-public-data:samples.shakespeare")
+    .load()
+```
+
+You can find a complete example at `com.miraisolutions.spark.bigquery.examples.Shakespeare`.
+
+To run this example on Google Dataproc (assuming you have the [Google Cloud SDK](https://cloud.google.com/sdk/) installed):
+1. Build an assembly using `sbt clean compile assembly`
+2. `gcloud dataproc jobs submit spark --cluster <your_cluster_name> --class com.miraisolutions.spark.bigquery.examples.Shakespeare --jars target/scala-2.11/spark-bigquery-assembly-<version>.jar -- <your_billing_project_id> <your_gcs_bucket>`
+
 ## License
 
 MIT License
