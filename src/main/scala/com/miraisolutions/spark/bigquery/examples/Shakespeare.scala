@@ -19,26 +19,32 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery
+package com.miraisolutions.spark.bigquery.examples
 
-import com.google.api.services.bigquery.model.TableReference
-import com.spotify.spark.bigquery._
-import org.apache.spark.sql.sources.InsertableRelation
-import org.apache.spark.sql.{DataFrame, SQLContext}
+import org.apache.spark.sql.SparkSession
 
 /**
-  * Relation for a Google BigQuery table
+  * Reads the public Google BigQuery sample dataset 'shakespeare'.
+  * See [[https://cloud.google.com/bigquery/public-data/]].
   *
-  * @param tableRef BigQuery table reference
-  * @param sqlContext Spark SQL context
+  * Run by providing:
+  *  1. Google BigQuery billing project ID
+  *  1. Google BigQuery GCS bucket (for temporary files)
   */
-private final case class BigQueryTableRelation(tableRef: TableReference, sqlContext: SQLContext)
-  extends BaseDataFrameRelation with InsertableRelation {
+object Shakespeare {
+  def main(args: Array[String]): Unit = {
+    val spark = SparkSession
+      .builder
+      .appName("Google BigQuery Shakespeare")
+      .getOrCreate
 
-  override protected lazy val dataFrame: DataFrame = sqlContext.bigQueryTable(tableRef)
+    val df = spark.read
+      .format("com.miraisolutions.spark.bigquery")
+      .option("bq.project.id", args(0))
+      .option("bq.gcs.bucket", args(1))
+      .option("table", "bigquery-public-data:samples.shakespeare")
+      .load()
 
-  override def insert(data: DataFrame, overwrite: Boolean): Unit = {
-    val writeDisposition = if(overwrite) WriteDisposition.WRITE_TRUNCATE else WriteDisposition.WRITE_APPEND
-    data.saveAsBigQueryTable(tableRef, writeDisposition, CreateDisposition.CREATE_NEVER)
+    df.show(100)
   }
 }

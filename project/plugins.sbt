@@ -5,3 +5,5 @@ addSbtPlugin("com.lightbend.sbt" % "sbt-proguard" % "0.3.0")
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.0")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-license-report" % "1.2.0")
+
+addSbtPlugin("de.heikoseeberger" % "sbt-header" % "3.0.2")

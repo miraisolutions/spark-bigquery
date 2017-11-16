@@ -8,7 +8,13 @@ name := "spark-bigquery"
 
 organization := "com.miraisolutions"
 
+organizationName := "Mirai Solutions GmbH"
+
 version := "0.1.0-SNAPSHOT"
+
+startYear := Some(2017)
+
+licenses += ("MIT", new URL("https://opensource.org/licenses/MIT"))
 
 scalaVersion := "2.11.11"
 
@@ -78,7 +84,7 @@ proguardOptions in Proguard ++=
     "-keep class com.databricks.spark.avro.** { *; }",
     "-keep class com.google.cloud.hadoop.** { *; }",
     "-keep class com.spotify.spark.bigquery.** { *; }",
-    "-keep class com.miraisolutions.spark.bigquery.DefaultSource { *; }"
+    "-keep class com.miraisolutions.spark.bigquery.** { *; }"
   )
 
 proguardInputs in Proguard := Seq(baseDirectory.value / "target" / s"scala-${scalaVersion.value.dropRight(3)}" /
