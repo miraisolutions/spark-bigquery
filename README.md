@@ -29,6 +29,11 @@ To run this example on Google Dataproc (assuming you have the [Google Cloud SDK]
 1. Build an assembly using `sbt clean compile assembly`
 2. `gcloud dataproc jobs submit spark --cluster <your_cluster_name> --class com.miraisolutions.spark.bigquery.examples.Shakespeare --jars target/scala-2.11/spark-bigquery-assembly-<version>.jar -- <your_billing_project_id> <your_gcs_bucket>`
 
+If you are running on a Spark cluster outside of the Google Cloud, you may need to set [Google application default credentials](https://developers.google.com/identity/protocols/application-default-credentials) or relevant Spark/Hadoop configuration options. The following is an example using a local Spark cluster:
+
+`spark-submit --class com.miraisolutions.spark.bigquery.examples.Shakespeare --master local[2] --conf spark.hadoop.google.cloud.auth.service.account.json.keyfile="/path/to/your/gcp_json_keyfile.json" target/scala-2.11/spark-bigquery-assembly-<version>.jar <your_billing_project_id> <your_gcs_bucket>`
+
+
 ## License
 
 MIT License
