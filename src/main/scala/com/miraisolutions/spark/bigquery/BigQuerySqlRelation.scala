@@ -21,8 +21,13 @@
 
 package com.miraisolutions.spark.bigquery
 
+import com.miraisolutions.spark.bigquery.utils.SqlLogger
 import com.spotify.spark.bigquery._
-import org.apache.spark.sql.{DataFrame, SQLContext}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.sources.{BaseRelation, TableScan}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{Row, SQLContext}
+import org.slf4j.LoggerFactory
 
 /**
   * Relation for a Google BigQuery standard SQL query
@@ -30,6 +35,17 @@ import org.apache.spark.sql.{DataFrame, SQLContext}
   * @param sqlQuery BigQuery standard SQL query in SQL-2011 dialect
   * @param sqlContext Spark SQL context
   */
-private final case class BigQuerySqlRelation(sqlQuery: String, sqlContext: SQLContext) extends BaseDataFrameRelation {
-  override protected lazy val dataFrame: DataFrame = sqlContext.bigQuerySelect(sqlQuery)
+private final case class BigQuerySqlRelation(sqlQuery: String, sqlContext: SQLContext)
+  extends BaseRelation with TableScan {
+
+  private val sqlLogger = SqlLogger(LoggerFactory.getLogger(classOf[BigQuerySqlRelation]))
+
+  private lazy val dataFrame = {
+    sqlLogger.logSqlQuery(sqlQuery)
+    sqlContext.bigQuerySelect(sqlQuery)
+  }
+
+  override def schema: StructType = dataFrame.schema
+
+  override def buildScan(): RDD[Row] = dataFrame.rdd
 }

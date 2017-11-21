@@ -85,7 +85,7 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
     getTableRelation(sqlContext, parameters)
       .orElse(getSqlRelation(sqlContext, parameters))
       .getOrElse(throw new MissingParameterException(
-        "Either a parameter 'table' of the form [projectId]:[datasetId].[tableId] or 'sqlQuery' must be specified."
+        "Either a parameter 'table' of the form [projectId].[datasetId].[tableId] or 'sqlQuery' must be specified."
       ))
   }
 
@@ -100,7 +100,7 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
 
     getTableRelation(sqlContext, parameters).fold(
       throw new MissingParameterException(
-        "A parameter 'table' of the form [projectId]:[datasetId].[tableId] must be specified."
+        "A parameter 'table' of the form [projectId].[datasetId].[tableId] must be specified."
       )
     ) { relation =>
 

@@ -22,9 +22,14 @@
 package com.miraisolutions.spark.bigquery
 
 import com.google.api.services.bigquery.model.TableReference
+import com.miraisolutions.spark.bigquery.sql.BigQuerySqlGeneration
+import com.miraisolutions.spark.bigquery.utils.SqlLogger
 import com.spotify.spark.bigquery._
-import org.apache.spark.sql.sources.InsertableRelation
-import org.apache.spark.sql.{DataFrame, SQLContext}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.sources._
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.slf4j.LoggerFactory
 
 /**
   * Relation for a Google BigQuery table
@@ -33,11 +38,37 @@ import org.apache.spark.sql.{DataFrame, SQLContext}
   * @param sqlContext Spark SQL context
   */
 private final case class BigQueryTableRelation(tableRef: TableReference, sqlContext: SQLContext)
-  extends BaseDataFrameRelation with InsertableRelation {
+  extends BaseRelation with TableScan with PrunedScan with PrunedFilteredScan with InsertableRelation {
 
-  override protected lazy val dataFrame: DataFrame = sqlContext.bigQueryTable(tableRef)
+  private val logger = LoggerFactory.getLogger(classOf[BigQueryTableRelation])
+  private val sqlLogger = SqlLogger(logger)
+  private val sql = BigQuerySqlGeneration(tableRef)
+
+  override def schema: StructType = {
+    val sqlQuery = sql.getSchemaQuery
+    sqlLogger.logSqlQuery(sqlQuery)
+    sqlContext.bigQuerySelect(sqlQuery).schema
+  }
+
+  override def buildScan(): RDD[Row] = {
+    logger.info(s"Querying table ${sql.table}")
+    sqlContext.bigQueryTable(tableRef).rdd
+  }
+
+  override def buildScan(requiredColumns: Array[String]): RDD[Row] = {
+    val sqlQuery = sql.getQuery(requiredColumns)
+    sqlLogger.logSqlQuery(sqlQuery)
+    sqlContext.bigQuerySelect(sqlQuery).rdd
+  }
+
+  override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
+    val sqlQuery = sql.getQuery(requiredColumns, filters)
+    sqlLogger.logSqlQuery(sqlQuery)
+    sqlContext.bigQuerySelect(sqlQuery).rdd
+  }
 
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {
+    logger.info(s"Writing to table ${sql.table} (overwrite = $overwrite)")
     val writeDisposition = if(overwrite) WriteDisposition.WRITE_TRUNCATE else WriteDisposition.WRITE_APPEND
     data.saveAsBigQueryTable(tableRef, writeDisposition, CreateDisposition.CREATE_NEVER)
   }
