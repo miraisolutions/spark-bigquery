@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory
   * @param sqlContext Spark SQL context
   */
 private final case class BigQueryTableRelation(tableRef: TableReference, sqlContext: SQLContext)
-  extends BaseRelation with TableScan with PrunedScan with PrunedFilteredScan with InsertableRelation {
+  extends BaseRelation with PrunedFilteredScan with InsertableRelation {
 
   private val logger = LoggerFactory.getLogger(classOf[BigQueryTableRelation])
   private val sqlLogger = SqlLogger(logger)
@@ -48,17 +48,6 @@ private final case class BigQueryTableRelation(tableRef: TableReference, sqlCont
     val sqlQuery = sql.getSchemaQuery
     sqlLogger.logSqlQuery(sqlQuery)
     sqlContext.bigQuerySelect(sqlQuery).schema
-  }
-
-  override def buildScan(): RDD[Row] = {
-    logger.info(s"Querying table ${sql.table}")
-    sqlContext.bigQueryTable(tableRef).rdd
-  }
-
-  override def buildScan(requiredColumns: Array[String]): RDD[Row] = {
-    val sqlQuery = sql.getQuery(requiredColumns)
-    sqlLogger.logSqlQuery(sqlQuery)
-    sqlContext.bigQuerySelect(sqlQuery).rdd
   }
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
