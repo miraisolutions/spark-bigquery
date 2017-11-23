@@ -23,12 +23,21 @@ The following table provides an overview over supported versions of Spark, Scala
 The provided Google BigQuery data source (`com.miraisolutions.spark.bigquery.DefaultSource`) can be used as follows:
 
 ``` scala
-val df = spark.read
-    .format("com.miraisolutions.spark.bigquery")
-    .option("bq.project.id", "<your_billing_project_id>")
-    .option("bq.gcs.bucket", "<your_gcs_bucket>")
-    .option("table", "bigquery-public-data:samples.shakespeare")
-    .load()
+val shakespeare = spark.read
+  .format("bigquery")
+  .option("bq.project.id", "<your_billing_project_id>")
+  .option("bq.gcs.bucket", "<your_gcs_bucket>")
+  .option("table", "bigquery-public-data:samples.shakespeare")
+  .load()
+
+import spark.implicits._
+
+val hamlet = shakespeare.filter($"corpus".like("hamlet"))
+hamlet.show(100)
+
+shakespeare.createOrReplaceTempView("shakespeare")
+val macbeth = spark.sql("SELECT * FROM shakespeare WHERE corpus = 'macbeth'")
+macbeth.show(100)
 ```
 
 You can find a complete example at `com.miraisolutions.spark.bigquery.examples.Shakespeare`.
@@ -39,7 +48,10 @@ To run this example on Google Dataproc (assuming you have the [Google Cloud SDK]
 
 If you are running on a Spark cluster outside of the Google Cloud, you may need to set [Google application default credentials](https://developers.google.com/identity/protocols/application-default-credentials) or relevant Spark/Hadoop configuration options. The following is an example using a local Spark cluster:
 
-`spark-submit --class com.miraisolutions.spark.bigquery.examples.Shakespeare --master local[2] --conf spark.hadoop.google.cloud.auth.service.account.json.keyfile="/path/to/your/gcp_json_keyfile.json" target/scala-2.11/spark-bigquery-assembly-<version>.jar <your_billing_project_id> <your_gcs_bucket>`
+```
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/gcp_json_keyfile.json
+spark-submit --class com.miraisolutions.spark.bigquery.examples.Shakespeare --master local[2] --conf spark.hadoop.google.cloud.auth.service.account.json.keyfile="/path/to/your/gcp_json_keyfile.json" target/scala-2.11/spark-bigquery-assembly-<version>.jar <your_billing_project_id> <your_gcs_bucket>
+```
 
 
 ## License
