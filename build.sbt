@@ -26,9 +26,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
   "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
   "org.scalatest" %% "scalatest" % "3.0.4" % "test",
-  // TODO: use released version once available;
-  // currently using (local) SNAPSHOT version with spark-avro 4.0.0
-  "com.spotify" %% "spark-bigquery" % "0.2.2-SNAPSHOT" excludeAll(
+  "com.spotify" %% "spark-bigquery" % "0.2.2" excludeAll(
     ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
     ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark 2.2.x
     ExclusionRule("commons-lang", "commons-lang") // clashes with Spark 2.2.x
