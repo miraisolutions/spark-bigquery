@@ -38,13 +38,20 @@ object Shakespeare {
       .appName("Google BigQuery Shakespeare")
       .getOrCreate
 
-    val df = spark.read
-      .format("com.miraisolutions.spark.bigquery")
+    val shakespeare = spark.read
+      .format("bigquery")
       .option("bq.project.id", args(0))
       .option("bq.gcs.bucket", args(1))
       .option("table", "bigquery-public-data:samples.shakespeare")
       .load()
 
-    df.show(100)
+    import spark.implicits._
+
+    val hamlet = shakespeare.filter($"corpus".like("hamlet"))
+    hamlet.show(100)
+
+    shakespeare.createOrReplaceTempView("shakespeare")
+    val macbeth = spark.sql("SELECT * FROM shakespeare WHERE corpus = 'macbeth'")
+    macbeth.show(100)
   }
 }
