@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Mirai Solutions GmbH
+ * Copyright (c) 2018 Mirai Solutions GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -38,7 +38,8 @@ import org.slf4j.LoggerFactory
 private final case class BigQuerySqlRelation(sqlQuery: String, sqlContext: SQLContext)
   extends BaseRelation with TableScan {
 
-  private val sqlLogger = SqlLogger(LoggerFactory.getLogger(classOf[BigQuerySqlRelation]))
+  private val logger = LoggerFactory.getLogger(classOf[BigQuerySqlRelation])
+  private val sqlLogger = SqlLogger(logger)
 
   private lazy val dataFrame = {
     sqlLogger.logSqlQuery(sqlQuery)

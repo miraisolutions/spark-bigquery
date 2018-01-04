@@ -12,7 +12,7 @@ organizationName := "Mirai Solutions GmbH"
 
 version := "0.1.0-SNAPSHOT"
 
-startYear := Some(2017)
+startYear := Some(2018)
 
 licenses += ("MIT", new URL("https://opensource.org/licenses/MIT"))
 
@@ -26,7 +26,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
   "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
   "org.scalatest" %% "scalatest" % "3.0.4" % "test",
-  "com.spotify" %% "spark-bigquery" % "0.2.2" excludeAll(
+  "com.spotify" %% "spark-bigquery" % "0.2.3-SNAPSHOT" excludeAll(
     ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
     ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark 2.2.x
     ExclusionRule("commons-lang", "commons-lang") // clashes with Spark 2.2.x
@@ -107,9 +107,9 @@ def existsUrl(url: String): Boolean = {
 // Extends license report to include artifact description and link to JAR files
 licenseReportNotes := {
   // TODO: remove this case once the released version is available
-  case DepModuleInfo("com.spotify", "spark-bigquery_2.11", "0.2.2-SNAPSHOT") =>
+  case DepModuleInfo("com.spotify", "spark-bigquery_2.11", "0.2.3-SNAPSHOT") =>
     "Spark Bigquery" + '\u001F' + "spark-bigquery" + '\u001F' +
-      "N/A (waiting for next released version integrating https://github.com/spotify/spark-bigquery/pull/47)" +
+      "N/A (waiting for next released version integrating https://github.com/spotify/spark-bigquery/pull/53)" +
       '\u001F' + "N/A"
 
   case DepModuleInfo(group, id, version) =>
