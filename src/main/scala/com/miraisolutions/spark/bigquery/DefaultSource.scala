@@ -31,6 +31,8 @@ import org.apache.spark.sql.sources._
   */
 class DefaultSource extends RelationProvider with CreatableRelationProvider with DataSourceRegister {
 
+
+
   /** Short name for data source */
   override def shortName(): String = "bigquery"
 

@@ -21,7 +21,6 @@
 
 package com.miraisolutions.spark.bigquery
 
-import com.google.api.services.bigquery.model.TableReference
 import com.miraisolutions.spark.bigquery.sql.BigQuerySqlGeneration
 import com.miraisolutions.spark.bigquery.utils.SqlLogger
 import com.spotify.spark.bigquery._
@@ -34,21 +33,17 @@ import org.slf4j.LoggerFactory
 /**
   * Relation for a Google BigQuery table
   *
-  * @param tableRef BigQuery table reference
+  * @param table BigQuery table
   * @param sqlContext Spark SQL context
   */
-private final case class BigQueryTableRelation(tableRef: TableReference, sqlContext: SQLContext)
+private final case class BigQueryTableRelation(table: BigQueryTable, sqlContext: SQLContext)
   extends BaseRelation with PrunedFilteredScan with InsertableRelation {
 
   private val logger = LoggerFactory.getLogger(classOf[BigQueryTableRelation])
   private val sqlLogger = SqlLogger(logger)
-  private val sql = BigQuerySqlGeneration(tableRef)
+  private val sql = BigQuerySqlGeneration(table)
 
-  override def schema: StructType = {
-    val sqlQuery = sql.getSchemaQuery
-    sqlLogger.logSqlQuery(sqlQuery)
-    sqlContext.bigQuerySelect(sqlQuery).schema
-  }
+  override def schema: StructType = BigQueryClient.getSchema(table)
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val sqlQuery = sql.getQuery(requiredColumns, filters)

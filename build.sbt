@@ -25,12 +25,16 @@ enablePlugins(SbtProguard)
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
   "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
-  "org.scalatest" %% "scalatest" % "3.0.4" % "test",
+  "com.google.cloud" % "google-cloud-bigquery" % "1.25.0",
+  // "com.databricks" %% "spark-avro" % "4.0.0",
+  "org.scalatest" %% "scalatest" % "3.0.4" % "test"
+  /*
   "com.spotify" %% "spark-bigquery" % "0.2.3-SNAPSHOT" excludeAll(
     ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
     ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark 2.2.x
     ExclusionRule("commons-lang", "commons-lang") // clashes with Spark 2.2.x
   )
+  */
 )
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
@@ -44,19 +48,23 @@ assemblyShadeRules in assembly := Seq(
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", _) =>
     MergeStrategy.discard
+  /*
   case PathList("com", "databricks", "spark", "avro", xs @ _*) =>
     // NOTE: "com.spotify" %% "spark-bigquery" provides a modified implementation of
     // com.databricks.spark.avro.SchemaConverters
     MergeStrategy.first
+  */
   case _ =>
     MergeStrategy.singleOrError
 }
 
 // Exclude avro-ipc tests jar
+/*
 assemblyExcludedJars in assembly := {
   val cp = (fullClasspath in assembly).value
   cp filter { _.data.getName == "avro-ipc-1.7.7-tests.jar" }
 }
+*/
 
 // https://github.com/sbt/sbt-proguard/issues/23
 // https://stackoverflow.com/questions/39655207/how-to-obfuscate-fat-scala-jar-with-proguard-and-sbt
@@ -81,7 +89,7 @@ proguardOptions in Proguard ++=
     "-keep class org.apache.avro.** { *; }",
     "-keep class com.databricks.spark.avro.** { *; }",
     "-keep class com.google.cloud.hadoop.** { *; }",
-    "-keep class com.spotify.spark.bigquery.** { *; }",
+    // "-keep class com.spotify.spark.bigquery.** { *; }",
     "-keep class com.miraisolutions.spark.bigquery.** { *; }"
   )
 
@@ -106,12 +114,13 @@ def existsUrl(url: String): Boolean = {
 
 // Extends license report to include artifact description and link to JAR files
 licenseReportNotes := {
+  /*
   // TODO: remove this case once the released version is available
   case DepModuleInfo("com.spotify", "spark-bigquery_2.11", "0.2.3-SNAPSHOT") =>
     "Spark Bigquery" + '\u001F' + "spark-bigquery" + '\u001F' +
       "N/A (waiting for next released version integrating https://github.com/spotify/spark-bigquery/pull/53)" +
       '\u001F' + "N/A"
-
+  */
   case DepModuleInfo(group, id, version) =>
     try {
       // Fetch artifact information
