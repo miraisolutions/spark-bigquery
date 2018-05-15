@@ -20,12 +20,12 @@ scalaVersion := "2.11.11"
 
 resolvers += Opts.resolver.sonatypeReleases
 
-enablePlugins(SbtProguard)
+// enablePlugins(SbtProguard)
 
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
   "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
-  "com.google.cloud" % "google-cloud-bigquery" % "1.25.0",
+  "com.google.cloud" % "google-cloud-bigquery" % "1.29.0",
   // "com.databricks" %% "spark-avro" % "4.0.0",
   "org.scalatest" %% "scalatest" % "3.0.4" % "test"
   /*
@@ -42,12 +42,17 @@ assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeSca
 // Shade google guava dependency due to version mismatch between bigquery connector and Spark
 // See https://github.com/spotify/spark-bigquery/issues/12
 assemblyShadeRules in assembly := Seq(
-  ShadeRule.rename("com.google.common.**" -> "shadegooglecommon.@1").inAll
+  // ShadeRule.rename("com.google.common.**" -> "shadegooglecommon.@1").inAll
+  ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
 )
 
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", _) =>
     MergeStrategy.discard
+
+  case PathList("META-INF", "maven", _*) =>
+    MergeStrategy.discard
+
   /*
   case PathList("com", "databricks", "spark", "avro", xs @ _*) =>
     // NOTE: "com.spotify" %% "spark-bigquery" provides a modified implementation of
@@ -69,7 +74,7 @@ assemblyExcludedJars in assembly := {
 // https://github.com/sbt/sbt-proguard/issues/23
 // https://stackoverflow.com/questions/39655207/how-to-obfuscate-fat-scala-jar-with-proguard-and-sbt
 
-proguardOptions in Proguard ++=
+/*proguardOptions in Proguard ++=
   Seq(
     "-dontobfuscate",
     "-dontoptimize",
@@ -96,7 +101,7 @@ proguardOptions in Proguard ++=
 proguardInputs in Proguard := Seq(baseDirectory.value / "target" / s"scala-${scalaVersion.value.dropRight(3)}" /
   s"${name.value}-assembly-${version.value}.jar")
 
-proguardMerge in Proguard := false
+proguardMerge in Proguard := false*/
 
 licenseConfigurations := Set("compile")
 

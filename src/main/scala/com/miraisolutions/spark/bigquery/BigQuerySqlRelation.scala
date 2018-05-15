@@ -21,32 +21,24 @@
 
 package com.miraisolutions.spark.bigquery
 
-import com.miraisolutions.spark.bigquery.utils.SqlLogger
-import com.spotify.spark.bigquery._
+import com.miraisolutions.spark.bigquery.client.BigQueryClient
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.sources.{BaseRelation, TableScan}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Row, SQLContext}
-import org.slf4j.LoggerFactory
 
 /**
   * Relation for a Google BigQuery standard SQL query
   *
-  * @param sqlQuery BigQuery standard SQL query in SQL-2011 dialect
   * @param sqlContext Spark SQL context
+  * @param sqlQuery BigQuery standard SQL query in SQL-2011 dialect
   */
-private final case class BigQuerySqlRelation(sqlQuery: String, sqlContext: SQLContext)
+private final class BigQuerySqlRelation(val sqlContext: SQLContext, val client: BigQueryClient, val sqlQuery: String)
   extends BaseRelation with TableScan {
 
-  private val logger = LoggerFactory.getLogger(classOf[BigQuerySqlRelation])
-  private val sqlLogger = SqlLogger(logger)
+  private lazy val table = client.executeQuery(sqlQuery, sqlContext.sparkContext.defaultParallelism)
 
-  private lazy val dataFrame = {
-    sqlLogger.logSqlQuery(sqlQuery)
-    sqlContext.bigQuerySelect(sqlQuery)
-  }
+  override def schema: StructType = client.getSchema(table.table.getTableId)
 
-  override def schema: StructType = dataFrame.schema
-
-  override def buildScan(): RDD[Row] = dataFrame.rdd
+  override def buildScan(): RDD[Row] = new BigQueryRowRDD(sqlContext.sparkContext, table)
 }

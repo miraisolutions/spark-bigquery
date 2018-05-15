@@ -21,39 +21,38 @@
 
 package com.miraisolutions.spark.bigquery
 
+import com.miraisolutions.spark.bigquery.client.BigQueryClient
 import com.miraisolutions.spark.bigquery.sql.BigQuerySqlGeneration
-import com.miraisolutions.spark.bigquery.utils.SqlLogger
-import com.spotify.spark.bigquery._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
 import org.slf4j.LoggerFactory
 
 /**
   * Relation for a Google BigQuery table
   *
-  * @param table BigQuery table
   * @param sqlContext Spark SQL context
+  * @param table BigQuery table
   */
-private final case class BigQueryTableRelation(table: BigQueryTable, sqlContext: SQLContext)
+private final class BigQueryTableRelation(val sqlContext: SQLContext, val client: BigQueryClient,
+                                          val table: BigQueryTableReference)
   extends BaseRelation with PrunedFilteredScan with InsertableRelation {
 
   private val logger = LoggerFactory.getLogger(classOf[BigQueryTableRelation])
-  private val sqlLogger = SqlLogger(logger)
   private val sql = BigQuerySqlGeneration(table)
 
-  override def schema: StructType = BigQueryClient.getSchema(table)
+  override def schema: StructType = client.getSchema(table)
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val sqlQuery = sql.getQuery(requiredColumns, filters)
-    sqlLogger.logSqlQuery(sqlQuery)
-    sqlContext.bigQuerySelect(sqlQuery).rdd
+    val table = client.executeQuery(sqlQuery, sqlContext.sparkContext.defaultParallelism)
+    new BigQueryRowRDD(sqlContext.sparkContext, table)
   }
 
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {
-    logger.info(s"Writing to table ${sql.table} (overwrite = $overwrite)")
-    val writeDisposition = if(overwrite) WriteDisposition.WRITE_TRUNCATE else WriteDisposition.WRITE_APPEND
-    data.saveAsBigQueryTable(tableRef, writeDisposition, CreateDisposition.CREATE_NEVER)
+    logger.info(s"Writing to table $table (overwrite = $overwrite)")
+    val mode = if(overwrite) SaveMode.Overwrite else SaveMode.Append
+    client.writeTable(data, table, mode)
   }
 }

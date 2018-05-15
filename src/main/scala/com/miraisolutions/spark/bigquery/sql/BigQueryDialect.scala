@@ -30,6 +30,7 @@ private case object BigQueryDialect extends JdbcDialect {
 
   // BigQuery standard SQL query prefix;
   // see https://cloud.google.com/bigquery/docs/reference/standard-sql/enabling-standard-sql
+  // TODO: check whether still needed
   val QUERY_PREFIX = "#standardSQL\n"
 
   override def canHandle(url: String): Boolean = false

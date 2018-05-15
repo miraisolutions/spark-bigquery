@@ -29,7 +29,7 @@ import org.apache.spark.sql.SparkSession
   *
   * Run by providing:
   *  1. Google BigQuery billing project ID
-  *  1. Google BigQuery GCS bucket (for temporary files)
+  *  1. Google BigQuery staging dataset location (EU, US)
   */
 object Shakespeare {
   def main(args: Array[String]): Unit = {
@@ -40,9 +40,9 @@ object Shakespeare {
 
     val shakespeare = spark.read
       .format("bigquery")
-      .option("bq.project.id", args(0))
-      .option("bq.gcs.bucket", args(1))
-      .option("table", "bigquery-public-data:samples.shakespeare")
+      .option("bq.project", args(0))
+      .option("bq.staging_dataset.location", args(1))
+      .option("table", "bigquery-public-data.samples.shakespeare")
       .load()
 
     import spark.implicits._

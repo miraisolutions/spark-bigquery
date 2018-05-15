@@ -21,20 +21,17 @@
 
 package com.miraisolutions.spark.bigquery.sql
 
-import com.miraisolutions.spark.bigquery.BigQueryTable
+import com.miraisolutions.spark.bigquery.BigQueryTableReference
 import org.apache.spark.sql.execution.datasources.jdbc.JDBCRDD
 import org.apache.spark.sql.sources.Filter
 
 
 /**
   * Google BigQuery SQL Generation
-  * @param table BigQuery table
+  * @param table BigQuery table reference
   * @see https://cloud.google.com/bigquery/docs/reference/standard-sql/
   */
-private[bigquery] case class BigQuerySqlGeneration(table: BigQueryTable) {
-
-  /** SQL query used to determine schema */
-  def getSchemaQuery: String = BigQueryDialect.getSchemaQuery(table.identifier)
+private[bigquery] case class BigQuerySqlGeneration(table: BigQueryTableReference) {
 
   // Generates column list for SELECT statement
   private def getColumnList(columns: Array[String]): String = {
