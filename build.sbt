@@ -20,7 +20,7 @@ scalaVersion := "2.11.11"
 
 resolvers += Opts.resolver.sonatypeReleases
 
-// enablePlugins(SbtProguard)
+enablePlugins(SbtProguard)
 
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
@@ -31,10 +31,8 @@ libraryDependencies ++= Seq(
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 
-// Shade google guava dependency due to version mismatch between bigquery connector and Spark
-// See https://github.com/spotify/spark-bigquery/issues/12
+// Shade google dependencies due to version mismatches with dependencies deployed on Google Dataproc
 assemblyShadeRules in assembly := Seq(
-  // ShadeRule.rename("com.google.common.**" -> "shadegooglecommon.@1").inAll
   ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
 )
 
@@ -52,7 +50,7 @@ assemblyMergeStrategy in assembly := {
 // https://github.com/sbt/sbt-proguard/issues/23
 // https://stackoverflow.com/questions/39655207/how-to-obfuscate-fat-scala-jar-with-proguard-and-sbt
 
-/*proguardOptions in Proguard ++=
+proguardOptions in Proguard ++=
   Seq(
     "-dontobfuscate",
     "-dontoptimize",
@@ -69,17 +67,15 @@ assemblyMergeStrategy in assembly := {
       |    public static **[] values();
       |    public static ** valueOf(java.lang.String);
       |}""".stripMargin,
-    "-keep class org.apache.avro.** { *; }",
-    "-keep class com.databricks.spark.avro.** { *; }",
-    "-keep class com.google.cloud.hadoop.** { *; }",
-    // "-keep class com.spotify.spark.bigquery.** { *; }",
+    "-keep class shadegoogle.cloud.** { *; }",
+    "-keep class shadegoogle.common.** { *; }",
     "-keep class com.miraisolutions.spark.bigquery.** { *; }"
   )
 
 proguardInputs in Proguard := Seq(baseDirectory.value / "target" / s"scala-${scalaVersion.value.dropRight(3)}" /
   s"${name.value}-assembly-${version.value}.jar")
 
-proguardMerge in Proguard := false*/
+proguardMerge in Proguard := false
 
 licenseConfigurations := Set("compile")
 

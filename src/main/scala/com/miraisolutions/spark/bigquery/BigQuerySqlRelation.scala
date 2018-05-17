@@ -31,14 +31,18 @@ import org.apache.spark.sql.{Row, SQLContext}
   * Relation for a Google BigQuery standard SQL query
   *
   * @param sqlContext Spark SQL context
-  * @param sqlQuery BigQuery standard SQL query in SQL-2011 dialect
+  * @param client BigQuery client
+  * @param sqlQuery BigQuery standard SQL query (SQL-2011)
   */
 private final class BigQuerySqlRelation(val sqlContext: SQLContext, val client: BigQueryClient, val sqlQuery: String)
   extends BaseRelation with TableScan {
 
+  // Table reader
   private lazy val table = client.executeQuery(sqlQuery, sqlContext.sparkContext.defaultParallelism)
 
+  // See {{BaseRelation}}
   override def schema: StructType = client.getSchema(table.table.getTableId)
 
+  // See {{TableScan}}
   override def buildScan(): RDD[Row] = new BigQueryRowRDD(sqlContext.sparkContext, table)
 }

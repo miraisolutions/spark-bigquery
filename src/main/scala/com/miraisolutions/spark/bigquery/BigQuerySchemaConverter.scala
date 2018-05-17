@@ -42,17 +42,33 @@ private object BigQuerySchemaConverter {
   private val KEY_FIELD_NAME = "key"
   private val VALUE_FIELD_NAME = "value"
 
+  /**
+    * Converts a BigQuery schema to a Spark schema.
+    * @param schema BigQuery schema
+    * @return Spark schema
+    */
   def fromBigQueryToSpark(schema: Schema): StructType = {
     val fields = schema.getFields.asScala.map(bigQueryToSparkField)
     StructType(fields)
   }
 
+  /**
+    * Creates a function that can be used to convert a BigQuery row (represented as [[FieldValueList]]) to a Spark
+    * row.
+    * @param schema BigQuery schema
+    * @return Function to convert a BigQuery row to a Spark row
+    */
   def getBigQueryToSparkConverterFunction(schema: Schema): FieldValueList => Row = { fields =>
     val meta = fromBigQueryToSpark(schema).fields.zip(fields.asScala)
     val values = meta map { case (field, value) => getRowValue(value, field.dataType) }
     Row.fromSeq(values)
   }
 
+  /**
+    * Converts a BigQuery [[Field]] to a Spark [[StructField]].
+    * @param field BigQuery [[Field]]
+    * @return Spark [[StructField]]
+    */
   private def bigQueryToSparkField(field: Field): StructField = {
     val dataType = field.getType match {
       case BOOLEAN =>
@@ -99,6 +115,12 @@ private object BigQuerySchemaConverter {
     }
   }
 
+  /**
+    * Extracts a value from a BigQuery field that can be used to construct a Spark row.
+    * @param value BigQuery [[FieldValue]]
+    * @param dataType Target Spark data type
+    * @return Spark row value
+    */
   private def getRowValue(value: FieldValue, dataType: DataType): Any = {
     if(value.isNull) {
       null
@@ -126,20 +148,42 @@ private object BigQuerySchemaConverter {
     }
   }
 
+  /**
+    * Converts a Spark schema to a BigQuery schema.
+    * @param schema Spark schema
+    * @return BigQuery schema
+    */
   def fromSparkToBigQuery(schema: StructType): Schema = {
     Schema.of(schema.fields.map(sparkToBigQueryField): _*)
   }
 
+  /**
+    * Creates a custom (key, value) [[StructField]] pair from a Spark [[MapType]] that can be used
+    * to construct a BigQuery record type.
+    * @param mapType Spark map type
+    * @return Key/value [[StructField]] pair according to the map's key/value data types
+    */
   private def customKeyValueStructFields(mapType: MapType): (StructField, StructField) = {
     val keyField = StructField(KEY_FIELD_NAME, mapType.keyType, false)
     val valueField = StructField(VALUE_FIELD_NAME, mapType.valueType, mapType.valueContainsNull)
     (keyField, valueField)
   }
 
+  /**
+    * Creates a custom [[StructField]] from a Spark [[ArrayType]] that can be used to construct a BigQuery
+    * field with "repeated" mode.
+    * @param arrayType Spark array type
+    * @return [[StructField]] according to the array's element data type
+    */
   private def customArrayStructField(arrayType: ArrayType): StructField = {
     StructField(VALUE_FIELD_NAME, arrayType.elementType, arrayType.containsNull)
   }
 
+  /**
+    * Converts a Spark [[StructField]] to a BigQuery [[Field]].
+    * @param field Spark [[StructField]]
+    * @return BigQuery [[Field]]
+    */
   private def sparkToBigQueryField(field: StructField): Field = {
     def f(tpe: LegacySQLTypeName): Field = {
       val mode = if(field.nullable) Field.Mode.NULLABLE else Field.Mode.REQUIRED
@@ -202,7 +246,12 @@ private object BigQuerySchemaConverter {
     }
   }
 
-  def getSparkToBigQueryConverterFunction(schema: StructType): Row => util.Map[String, Any]/*FieldValueList*/ = { row =>
+  /**
+    * Creates a function that can be used to convert a Spark row to a BigQuery row (represented as a map).
+    * @param schema Spark schema
+    * @return Function to convert a Spark row to a BigQuery row
+    */
+  def getSparkToBigQueryConverterFunction(schema: StructType): Row => util.Map[String, Any] = { row =>
     val meta = fromSparkToBigQuery(schema)
     val result = new util.HashMap[String, Any](meta.getFields.size)
 
@@ -212,7 +261,13 @@ private object BigQuerySchemaConverter {
     result
   }
 
-  private def getFieldValue(row: Row, field: Field): Any /*FieldValue*/ = {
+  /**
+    * Extracts a value from a Spark row that can be used to construct a BigQuery row.
+    * @param row Spark row
+    * @param field BigQuery field
+    * @return BigQuery field value
+    */
+  private def getFieldValue(row: Row, field: Field): Any = {
     val idx = row.fieldIndex(field.getName)
 
     if(row.isNullAt(idx)) {

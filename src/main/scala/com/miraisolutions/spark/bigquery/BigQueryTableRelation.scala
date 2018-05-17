@@ -33,23 +33,38 @@ import org.slf4j.LoggerFactory
   * Relation for a Google BigQuery table
   *
   * @param sqlContext Spark SQL context
-  * @param table BigQuery table
+  * @param client BigQuery client
+  * @param table BigQuery table reference
   */
 private final class BigQueryTableRelation(val sqlContext: SQLContext, val client: BigQueryClient,
                                           val table: BigQueryTableReference)
-  extends BaseRelation with PrunedFilteredScan with InsertableRelation {
+  extends BaseRelation with TableScan with PrunedScan with PrunedFilteredScan with InsertableRelation {
 
   private val logger = LoggerFactory.getLogger(classOf[BigQueryTableRelation])
   private val sql = BigQuerySqlGeneration(table)
 
+  // See {{BaseRelation}}
   override def schema: StructType = client.getSchema(table)
 
-  override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
-    val sqlQuery = sql.getQuery(requiredColumns, filters)
-    val table = client.executeQuery(sqlQuery, sqlContext.sparkContext.defaultParallelism)
-    new BigQueryRowRDD(sqlContext.sparkContext, table)
+  // See {{TableScan}}
+  override def buildScan(): RDD[Row] = {
+    val tbl = client.getTable(table, sqlContext.sparkContext.defaultParallelism)
+    new BigQueryRowRDD(sqlContext.sparkContext, tbl)
   }
 
+  // See {{PrunedScan}}
+  override def buildScan(requiredColumns: Array[String]): RDD[Row] = {
+    buildScan(requiredColumns, Array.empty)
+  }
+
+  // See {{PrunedFilteredScan}}
+  override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
+    val sqlQuery = sql.getQuery(requiredColumns, filters)
+    val tbl = client.executeQuery(sqlQuery, sqlContext.sparkContext.defaultParallelism)
+    new BigQueryRowRDD(sqlContext.sparkContext, tbl)
+  }
+
+  // See {{InsertableRelation}}
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {
     logger.info(s"Writing to table $table (overwrite = $overwrite)")
     val mode = if(overwrite) SaveMode.Overwrite else SaveMode.Append

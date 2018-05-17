@@ -36,9 +36,19 @@ private case class BigQueryTableReference(project: String, dataset: String, tabl
 
 private object BigQueryTableReference {
 
+  /**
+    * Creates a [[BigQueryTableReference]] from a [[TableId]]
+    * @param tableId Table ID
+    * @return BigQuery table reference
+    */
   def apply(tableId: TableId): BigQueryTableReference =
     BigQueryTableReference(tableId.getProject, tableId.getDataset, tableId.getTable)
 
+  /**
+    * Creates a [[BigQueryTableReference]] from a table reference [[String]]
+    * @param tableRef Table reference string
+    * @return BigQuery table reference
+    */
   def apply(tableRef: String): BigQueryTableReference = {
     // TODO: throw friendly error ...
     val Array(project, dataset, table) = tableRef.replace("`", "").split("\\.")
