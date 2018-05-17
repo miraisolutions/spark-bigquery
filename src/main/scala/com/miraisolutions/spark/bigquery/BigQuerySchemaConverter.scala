@@ -10,20 +10,18 @@ import java.util
 import LegacySQLTypeName._
 import com.google.common.io.BaseEncoding
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
-import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 
+/**
+  * Schema conversion functions to convert schemas between Apache Spark and Google BigQuery.
+  */
 private object BigQuerySchemaConverter {
-
-  private val logger = LoggerFactory.getLogger(this.getClass.getName)
 
   private val KEY_FIELD_NAME = "key"
   private val VALUE_FIELD_NAME = "value"
 
   def fromBigQueryToSpark(schema: Schema): StructType = {
-    logger.info(s"Schema: $schema")
-    logger.info(s"Fields: ${schema.getFields}")
     val fields = schema.getFields.asScala.map(bigQueryToSparkField)
     StructType(fields)
   }
@@ -193,17 +191,11 @@ private object BigQuerySchemaConverter {
     result
   }
 
-  // Yes, String. See docs of FieldValue.of(...);
-  // see also https://github.com/GoogleCloudPlatform/google-cloud-java/pull/2891
-  // private def primitive(value: String): FieldValue = FieldValue.of(FieldValue.Attribute.PRIMITIVE, value)
-
-
   private def getFieldValue(row: Row, field: Field): Any /*FieldValue*/ = {
     val idx = row.fieldIndex(field.getName)
 
     if(row.isNullAt(idx)) {
       null
-      // primitive(null)
     } else {
       val sourceType = row.schema(idx).dataType
       val targetType = field.getType
@@ -211,44 +203,34 @@ private object BigQuerySchemaConverter {
       (sourceType, targetType) match {
         case (BooleanType, BOOLEAN) =>
           row.getBoolean(idx)
-          // primitive(row.getBoolean(idx).toString)
 
         case (ByteType, INTEGER) =>
           row.getByte(idx)
-          // primitive(row.getByte(idx).toString)
 
         case (ShortType, INTEGER) =>
           row.getShort(idx)
-          // primitive(row.getShort(idx).toString)
 
         case (IntegerType, INTEGER) =>
           row.getInt(idx)
-          // primitive(row.getInt(idx).toString)
 
         case (LongType, INTEGER) =>
           row.getLong(idx)
-          // primitive(row.getLong(idx).toString)
 
         case (FloatType, FLOAT) =>
           row.getFloat(idx)
-          // primitive(row.getFloat(idx).toString)
 
         case (DoubleType, FLOAT) =>
           row.getDouble(idx)
-          // primitive(row.getDouble(idx).toString)
 
         case (_: DecimalType, STRING) =>
           row.getDecimal(idx)
-          // primitive(row.getDecimal(idx).toString)
 
         case (StringType, STRING) =>
           row.getString(idx)
-          // primitive(row.getString(idx))
 
         case (BinaryType, BYTES) =>
           val bytes = row.getAs[Array[Byte]](idx)
           BaseEncoding.base64().encode(bytes)
-          // primitive(BaseEncoding.base64().encode(bytes))
 
         case (StructType(_), RECORD) =>
           val struct = row.getStruct(idx)
@@ -259,19 +241,11 @@ private object BigQuerySchemaConverter {
           }
           result
 
-          /*val fields = field.getSubFields.asScala map { field =>
-            getFieldValue(row.getStruct(idx), field)
-          }
-          val fieldValueList = FieldValueList.of(fields.asJava, field.getSubFields)
-          FieldValue.of(FieldValue.Attribute.RECORD, fieldValueList)*/
-
         case (TimestampType, TIMESTAMP) =>
           row.getTimestamp(idx).getTime
-          // primitive(row.getTimestamp(idx).getTime.toString)
 
         case (DateType, STRING) =>
           row.getDate(idx).toString
-          // primitive(row.getDate(idx).toString)
 
         case (t: MapType, RECORD) =>
           val m = row.getMap[Any, Any](idx)
@@ -288,33 +262,11 @@ private object BigQuerySchemaConverter {
           }
           result
 
-          /*val (keyField, valueField) = customKeyValueStructFields(t)
-          val mapSchema = StructType(Array(keyField, valueField))
-
-          val mapFields = row.getMap(idx) map { kv =>
-            val kvRow = new GenericRowWithSchema(kv.productIterator.toArray, mapSchema)
-            val kvFields = field.getSubFields.asScala map { field =>
-              getFieldValue(kvRow, field)
-            }
-            val kvFieldValueList = FieldValueList.of(kvFields.asJava, field.getSubFields)
-            FieldValue.of(FieldValue.Attribute.RECORD, kvFieldValueList)
-          }
-          val mapFieldValueList = FieldValueList.of(mapFields.toList.asJava, field.getSubFields)
-          FieldValue.of(FieldValue.Attribute.REPEATED, mapFieldValueList)*/
-
         case (st: ArrayType, _) =>
           val arraySchema = StructType(Array(customArrayStructField(st)))
           row.getSeq[Any](idx) map { value =>
             getFieldValue(new GenericRowWithSchema(Array(value), arraySchema), field)
           } asJava
-
-
-          /*val arraySchema = StructType(Array(customArrayStructField(t)))
-          val arrayFields = row.getSeq[Any](idx) map { value =>
-            getFieldValue(new GenericRowWithSchema(Array(value), arraySchema), field)
-          }
-          val arrayFieldValueList = FieldValueList.of(arrayFields.asJava, FieldList.of(field))
-          FieldValue.of(FieldValue.Attribute.REPEATED, arrayFieldValueList)*/
       }
     }
   }

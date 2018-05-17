@@ -28,6 +28,7 @@ import org.apache.spark.sql.sources.Filter
 
 /**
   * Google BigQuery SQL Generation
+  *
   * @param table BigQuery table reference
   * @see https://cloud.google.com/bigquery/docs/reference/standard-sql/
   */
@@ -51,8 +52,7 @@ private[bigquery] case class BigQuerySqlGeneration(table: BigQueryTableReference
   }
 
   def getQuery(columns: Array[String]): String = {
-    import BigQueryDialect._
-    s"${QUERY_PREFIX} SELECT ${getColumnList(columns)} FROM $table"
+    s"SELECT ${getColumnList(columns)} FROM $table"
   }
 
   def getQuery(columns: Array[String], filters: Array[Filter]): String = {

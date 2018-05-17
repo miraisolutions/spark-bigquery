@@ -51,7 +51,14 @@ object Shakespeare {
     hamlet.show(100)
 
     shakespeare.createOrReplaceTempView("shakespeare")
-    val macbeth = spark.sql("SELECT * FROM shakespeare WHERE corpus = 'macbeth'")
+    val macbeth = spark.sql("SELECT * FROM shakespeare WHERE corpus = 'macbeth'").persist()
     macbeth.show(100)
+
+    macbeth.write
+      .format("bigquery")
+      .option("bq.project", args(0))
+      .option("bq.staging_dataset.location", args(1))
+      .option("table", args(0) + ".samples.macbeth")
+      .save()
   }
 }

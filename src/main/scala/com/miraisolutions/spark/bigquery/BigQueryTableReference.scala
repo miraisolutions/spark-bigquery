@@ -19,6 +19,7 @@ private object BigQueryTableReference {
     BigQueryTableReference(tableId.getProject, tableId.getDataset, tableId.getTable)
 
   def apply(tableRef: String): BigQueryTableReference = {
+    // TODO: throw friendly error ...
     val Array(project, dataset, table) = tableRef.replace("`", "").split("\\.")
     BigQueryTableReference(project, dataset, table)
   }

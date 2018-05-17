@@ -1,23 +1,32 @@
 package com.miraisolutions.spark.bigquery
 
-import com.google.cloud.bigquery.BigQuery.{DatasetDeleteOption, TableDataListOption}
+import com.google.cloud.bigquery.BigQuery.TableDataListOption
 import com.google.cloud.bigquery._
 
 package object client {
 
-  private[client] implicit class BigQueryDataset(val ds: Dataset) extends AnyVal {
+  /**
+    * Some convenience methods on [[Dataset]]
+    * @param ds BigQuery [[Dataset]]
+    */
+  private[client] implicit class BigQueryDataset(val ds: Dataset) {
+
+    private def fold[T](table: String)(ifNotExists: => T)(f: Table => T): T = {
+      Option(ds.get(table)).fold(ifNotExists) { tbl =>
+        if(tbl.exists()) f(tbl) else ifNotExists
+      }
+    }
 
     def getOrCreateTable(table: String, schema: Schema): Table = {
-      val tbl = ds.get(table)
-      if(tbl.exists()) tbl else createTable(table, schema)
+      fold(table)(createTable(table, schema))(identity)
     }
 
     def existsTable(table: String): Boolean = {
-      ds.get(table).exists()
+      fold(table)(false)(_ => true)
     }
 
     def isNonEmptyTable(table: String): Boolean = {
-      ds.get(table).list(TableDataListOption.pageSize(1)).getTotalRows > 0
+      fold(table)(false)(_.list(TableDataListOption.pageSize(1)).getTotalRows > 0)
     }
 
     def existsNonEmptyTable(table: String): Boolean = {
@@ -34,7 +43,7 @@ package object client {
     }
 
     def dropTable(table: String): Unit = {
-      if(ds.exists()) ds.delete(DatasetDeleteOption.deleteContents())
+      fold(table)((): Unit)(_.delete())
     }
 
     def dropAndCreateTable(table: String, schema: Schema): Table = {
