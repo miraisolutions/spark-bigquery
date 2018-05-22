@@ -27,6 +27,7 @@ import java.time.format.DateTimeFormatter
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert
 import com.google.cloud.bigquery.JobInfo.{CreateDisposition, WriteDisposition}
 import com.google.cloud.bigquery.{Option => _, _}
+import com.miraisolutions.spark.bigquery.exception.IOException
 import com.miraisolutions.spark.bigquery.utils.SqlLogger
 import com.miraisolutions.spark.bigquery.{BigQuerySchemaConverter, BigQueryTableReference}
 import org.apache.spark.sql.types.StructType
@@ -84,9 +85,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
   private def getOrCreateStagingDataset(): DatasetId = {
     import config._
 
-    // TODO: Cannot read and write in different locations: source: US, destination: EU
-    // TODO: attach location to dataset name?
-    val ds = getOrCreateDataset(project, stagingDataset.name) { builder =>
+    val ds = getOrCreateDataset(project, stagingDataset.name + "_" + stagingDataset.location) { builder =>
       builder
         .setDefaultTableLifetime(stagingDataset.lifetime)
         .setDescription(StagingDatasetConfig.DESCRIPTION)
@@ -174,7 +173,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
 
       if(response.hasErrors) {
         val msg = response.getInsertErrors.asScala.values.flatMap(_.asScala.map(_.getMessage)).toSet.mkString("\n")
-        throw new RuntimeException(msg)
+        throw new IOException(msg)
       }
     }
   }
@@ -191,7 +190,6 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
     logger.info(s"Attempting to insert ${df.count()} rows to table $table" +
       s" (mode: $mode, partitions: ${df.rdd.getNumPartitions})")
 
-    // TODO: configurable table location ?
     val ds = getOrCreateDataset(table.project, table.dataset)(_.build())
 
     val schema = BigQuerySchemaConverter.fromSparkToBigQuery(df.schema)
@@ -207,7 +205,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
 
       case ErrorIfExists =>
         if(ds.existsNonEmptyTable(table.table)) {
-          throw new RuntimeException(s"Table $table already exists and is not empty")
+          throw new IllegalStateException(s"Table $table already exists and is not empty")
         } else {
           val tbl = ds.getOrCreateTable(table.table, schema)
           insertRows(df, tbl)

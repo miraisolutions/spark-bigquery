@@ -22,6 +22,7 @@
 package com.miraisolutions.spark.bigquery
 
 import com.miraisolutions.spark.bigquery.client.{BigQueryClient, BigQueryConfig}
+import com.miraisolutions.spark.bigquery.exception.MissingParameterException
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.sources._
 

@@ -19,10 +19,10 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery
+package com.miraisolutions.spark.bigquery.exception
 
 /**
-  * Exception to be thrown in case of a missing parameter
+  * Exception thrown in case of a missing parameter.
   * @param message Exception message
   */
-private class MissingParameterException(message: String) extends Exception(message)
+private[bigquery] class MissingParameterException(message: String) extends Exception(message)

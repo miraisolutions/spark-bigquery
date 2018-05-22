@@ -242,7 +242,6 @@ private object BigQuerySchemaConverter {
 
       case _ => // HiveStringType, NullType, ObjectType, CalendarIntervalType
         f(STRING)
-        // TODO ???
     }
   }
 

@@ -25,7 +25,7 @@ enablePlugins(SbtProguard)
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
   "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
-  "com.google.cloud" % "google-cloud-bigquery" % "1.29.0",
+  "com.google.cloud" % "google-cloud-bigquery" % "1.30.0",
   "org.scalatest" %% "scalatest" % "3.0.4" % "test"
 )
 

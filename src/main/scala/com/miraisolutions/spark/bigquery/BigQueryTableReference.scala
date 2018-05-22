@@ -22,6 +22,7 @@
 package com.miraisolutions.spark.bigquery
 
 import com.google.cloud.bigquery.TableId
+import com.miraisolutions.spark.bigquery.exception.ParseException
 
 /**
   * BigQuery table reference
@@ -50,9 +51,14 @@ private object BigQueryTableReference {
     * @return BigQuery table reference
     */
   def apply(tableRef: String): BigQueryTableReference = {
-    // TODO: throw friendly error ...
-    val Array(project, dataset, table) = tableRef.replace("`", "").split("\\.")
-    BigQueryTableReference(project, dataset, table)
+    try {
+      val Array(project, dataset, table) = tableRef.replace("`", "").split("\\.")
+      BigQueryTableReference(project, dataset, table)
+    } catch {
+      case _: MatchError =>
+        throw new ParseException("Failed to parse BigQuery table reference which needs to be of the form " +
+          "[projectId].[datasetId].[tableId]")
+    }
   }
 
   // Converts an internal BigQuery table reference to a Google BigQuery API `TableId`
