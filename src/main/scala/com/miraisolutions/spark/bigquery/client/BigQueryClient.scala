@@ -54,7 +54,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
   import BigQueryClient._
 
   // Google BigQuery client using application default credentials
-  private val bigquery = BigQueryOptions.getDefaultInstance.getService
+  private val bigquery: BigQuery = BigQueryOptions.getDefaultInstance.getService
 
   private val logger = LoggerFactory.getLogger(classOf[BigQueryClient])
   private val sqlLogger = SqlLogger(logger)
@@ -123,7 +123,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
   /**
     * Gets a BigQuery table reader that can be used to read a BigQuery table through a number of pages/partitions.
     * @param table BigQuery table reference
-    * @param numPartitions Number of target partitions
+    * @param numPartitions Suggested number of target partitions. The effective number of partitions may be different.
     * @return BigQuery table reader
     */
   def getTable(table: BigQueryTableReference, numPartitions: Int): BigQueryTableReader = {
@@ -190,6 +190,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
     logger.info(s"Attempting to insert ${df.count()} rows to table $table" +
       s" (mode: $mode, partitions: ${df.rdd.getNumPartitions})")
 
+    // TODO: be able to pass dataset location when creating dataset
     val ds = getOrCreateDataset(table.project, table.dataset)(_.build())
 
     val schema = BigQuerySchemaConverter.fromSparkToBigQuery(df.schema)

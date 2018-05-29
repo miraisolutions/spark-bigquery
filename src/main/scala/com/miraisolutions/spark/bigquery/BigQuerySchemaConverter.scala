@@ -317,7 +317,8 @@ private object BigQuerySchemaConverter {
           result
 
         case (TimestampType, TIMESTAMP) =>
-          row.getTimestamp(idx).getTime
+          // BigQuery requires specifying the number of seconds since the epoch
+          row.getTimestamp(idx).getTime.toDouble / 1000
 
         case (DateType, STRING) =>
           row.getDate(idx).toString

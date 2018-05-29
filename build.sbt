@@ -20,14 +20,25 @@ scalaVersion := "2.11.11"
 
 resolvers += Opts.resolver.sonatypeReleases
 
-enablePlugins(SbtProguard)
+val sparkVersion = "2.2.1"
 
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
-  "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
-  "com.google.cloud" % "google-cloud-bigquery" % "1.30.0",
-  "org.scalatest" %% "scalatest" % "3.0.4" % "test"
+  "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
+  "com.google.cloud" % "google-cloud-bigquery" % "1.31.0",
+  "org.scalatest" %% "scalatest" % "3.0.4" % "it,test",
+  "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion}_0.9.0" % "it,test",
+  "org.apache.spark" %% "spark-hive" % sparkVersion % "it,test"
 )
+
+configs(IntegrationTest)
+
+Defaults.itSettings
+
+IntegrationTest / fork := true
+
+enablePlugins(SbtProguard)
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 
