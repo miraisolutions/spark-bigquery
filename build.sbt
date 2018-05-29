@@ -80,6 +80,7 @@ proguardOptions in Proguard ++=
       |}""".stripMargin,
     "-keep class shadegoogle.cloud.** { *; }",
     "-keep class shadegoogle.common.** { *; }",
+    "-keep class shadegoogle.auth.** { *; }",
     "-keep class com.miraisolutions.spark.bigquery.** { *; }"
   )
 
