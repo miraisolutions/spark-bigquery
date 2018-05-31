@@ -32,6 +32,7 @@ private object StagingDatasetConfig {
     val NAME = namespace + "name"
     val LOCATION = namespace + "location"
     val LIFETIME = namespace + "lifetime"
+    val GCS_BUCKET = namespace + "gcs_bucket"
   }
 
   object Defaults {
@@ -40,7 +41,7 @@ private object StagingDatasetConfig {
   }
 }
 
-private[bigquery] case class StagingDatasetConfig(name: String, location: String, lifetime: Long)
+private[bigquery] case class StagingDatasetConfig(name: String, location: String, lifetime: Long, gcsBucket: String)
 
 
 private object JobConfig {
@@ -71,7 +72,8 @@ private[bigquery] object BigQueryConfig {
     val stagingDataset = StagingDatasetConfig(
       name = parameters.getOrElse(StagingDatasetConfig.Keys.NAME, StagingDatasetConfig.Defaults.NAME),
       location = parameters(StagingDatasetConfig.Keys.LOCATION),
-      lifetime = parameters.get(StagingDatasetConfig.Keys.LIFETIME).map(_.toLong).getOrElse(StagingDatasetConfig.Defaults.LIFETIME)
+      lifetime = parameters.get(StagingDatasetConfig.Keys.LIFETIME).map(_.toLong).getOrElse(StagingDatasetConfig.Defaults.LIFETIME),
+      gcsBucket = parameters(StagingDatasetConfig.Keys.GCS_BUCKET)
     )
 
     val job = JobConfig(priority = parameters.get(JobConfig.Keys.PRIORITY).map(Priority.valueOf).getOrElse(JobConfig.Defaults.PRIORITY))

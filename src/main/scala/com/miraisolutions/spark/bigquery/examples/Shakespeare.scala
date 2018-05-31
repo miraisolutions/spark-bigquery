@@ -30,6 +30,7 @@ import org.apache.spark.sql.SparkSession
   * Run by providing:
   *  1. Google BigQuery billing project ID
   *  1. Google BigQuery staging dataset location (EU, US)
+  *  1. Google Cloud Storage bucket where staging files will be located
   */
 object Shakespeare {
   def main(args: Array[String]): Unit = {
@@ -42,7 +43,9 @@ object Shakespeare {
       .format("bigquery")
       .option("bq.project", args(0))
       .option("bq.staging_dataset.location", args(1))
+      .option("bq.staging_dataset.gcs_bucket", args(2))
       .option("table", "bigquery-public-data.samples.shakespeare")
+      .option("type", "direct")
       .load()
 
     import spark.implicits._
@@ -58,6 +61,7 @@ object Shakespeare {
       .format("bigquery")
       .option("bq.project", args(0))
       .option("bq.staging_dataset.location", args(1))
+      .option("bq.staging_dataset.gcs_bucket", args(2))
       .option("table", args(0) + ".samples.macbeth")
       .save()
   }

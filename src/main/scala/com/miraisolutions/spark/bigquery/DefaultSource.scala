@@ -23,8 +23,10 @@ package com.miraisolutions.spark.bigquery
 
 import com.miraisolutions.spark.bigquery.client.{BigQueryClient, BigQueryConfig}
 import com.miraisolutions.spark.bigquery.exception.MissingParameterException
+import org.apache.spark.sql.execution.datasources.DataSource
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.sources._
+import org.apache.spark.sql.execution.FileRelation
 
 /**
   * Google BigQuery default data source
@@ -34,59 +36,79 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
   /** Short name for data source */
   override def shortName(): String = "bigquery"
 
+  /** Creates a BigQuery client with the provided configuration parameters */
   private def getBigQueryClient(parameters: Map[String, String]): BigQueryClient = {
     new BigQueryClient(BigQueryConfig(parameters))
   }
 
   /**
-    * Retrieves a BigQuery table relation
+    * Exports a BigQuery table to a GCS staging location and creates a corresponding Spark [[FileRelation]].
     * @param sqlContext Spark SQL context
-    * @param parameters Connection parameters
-    * @return Some BigQuery table relation if the 'table' parameter has been specified, None otherwise
+    * @param client BigQuery client
+    * @param table BigQuery table reference
+    * @param format File export format
+    * @return Spark [[BaseRelation]] for the exported data files
     */
-  private def getTableRelation(sqlContext: SQLContext,
-                               parameters: Map[String, String]): Option[BigQueryTableRelation] = {
-    parameters.get("table") map { ref =>
-      val client = getBigQueryClient(parameters)
-      new BigQueryTableRelation(sqlContext, client, BigQueryTableReference(ref))
-    }
+  private def getTableExportFileRelation(sqlContext: SQLContext, client: BigQueryClient,
+                                         table: BigQueryTableReference, format: FileExportFormat): BaseRelation = {
+    val stagingDirectory = client.exportTable(table, format)
+    val dataSource = DataSource(
+      sparkSession = sqlContext.sparkSession,
+      className = format.sparkFormatIdentifier,
+      paths = List(stagingDirectory),
+      userSpecifiedSchema = None
+    )
+    dataSource.resolveRelation(true)
   }
 
   /**
-    * Retrieves a BigQuery SQL relation
+    * Gets a BigQuery table reference for the specified parameters. The parameters must either specify a table or
+    * a SQL query.
     * @param sqlContext Spark SQL context
-    * @param parameters Connection parameters
-    * @return Some BigQuery SQL relation if the 'sqlQuery' parameter has been specified, None otherwise
+    * @param client BigQuery client
+    * @param parameters Parameters - must either specify a table or SQL query.
+    * @return Reference to a BigQuery table that holds the data
     */
-  private def getSqlRelation(sqlContext: SQLContext,
-                             parameters: Map[String, String]): Option[BigQuerySqlRelation] = {
-    parameters.get("sqlQuery") map { query =>
-      val client = getBigQueryClient(parameters)
-      new BigQuerySqlRelation(sqlContext, client, query)
+  private def getBigQueryTableReference(sqlContext: SQLContext, client: BigQueryClient,
+                                        parameters: Map[String, String]): BigQueryTableReference = {
+    // Get direct table reference if 'table' has been specified
+    val table: Option[BigQueryTableReference] = parameters.get("table").map(BigQueryTableReference(_))
+    // Execute 'sqlQuery' and get reference to table containing the results
+    def sqlTable: Option[BigQueryTableReference] = parameters.get("sqlQuery") map { sqlQuery =>
+      client.executeQuery(sqlQuery, sqlContext.sparkContext.defaultParallelism).table
     }
+
+    table.orElse(sqlTable).getOrElse(throw new MissingParameterException(
+      "Either a parameter 'table' of the form [projectId].[datasetId].[tableId] or 'sqlQuery' must be specified."
+    ))
   }
 
   // See {{RelationProvider}}
   override def createRelation(sqlContext: SQLContext, parameters: Map[String, String]): BaseRelation = {
-    getTableRelation(sqlContext, parameters)
-      .orElse(getSqlRelation(sqlContext, parameters))
-      .getOrElse(throw new MissingParameterException(
-        "Either a parameter 'table' of the form [projectId].[datasetId].[tableId] or 'sqlQuery' must be specified."
-      ))
+    val client = getBigQueryClient(parameters)
+    val table = getBigQueryTableReference(sqlContext, client, parameters)
+
+    parameters.getOrElse("type", "direct") match {
+      case "direct" =>
+        BigQueryTableRelation(sqlContext, client, table)
+
+      case tpe =>
+        val format = FileExportFormat(tpe)
+        getTableExportFileRelation(sqlContext, client, table, format)
+    }
   }
 
   // See {{CreatableRelationProvider}}
   override def createRelation(sqlContext: SQLContext, mode: SaveMode, parameters: Map[String, String],
                               data: DataFrame): BaseRelation = {
 
-    getTableRelation(sqlContext, parameters).fold(
+    val client = getBigQueryClient(parameters)
+    val table = parameters.get("table").map(BigQueryTableReference(_)).getOrElse(
       throw new MissingParameterException(
         "A parameter 'table' of the form [projectId].[datasetId].[tableId] must be specified."
       )
-    ) { relation =>
-
-      relation.client.writeTable(data, relation.table, mode)
-      relation
-    }
+    )
+    client.writeTable(data, table, mode)
+    BigQueryTableRelation(sqlContext, client, table)
   }
 }

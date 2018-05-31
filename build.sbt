@@ -27,9 +27,10 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
   "com.google.cloud" % "google-cloud-bigquery" % "1.31.0",
+  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2",
   "org.scalatest" %% "scalatest" % "3.0.4" % "it,test",
   "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion}_0.9.0" % "it,test",
-  "org.apache.spark" %% "spark-hive" % sparkVersion % "it,test"
+  "org.apache.spark" %% "spark-hive" % sparkVersion % "it,test" // required by spark-testing-base
 )
 
 configs(IntegrationTest)

@@ -36,8 +36,8 @@ import org.slf4j.LoggerFactory
   * @param client BigQuery client
   * @param table BigQuery table reference
   */
-private final class BigQueryTableRelation(val sqlContext: SQLContext, val client: BigQueryClient,
-                                          val table: BigQueryTableReference)
+private final case class BigQueryTableRelation(sqlContext: SQLContext, client: BigQueryClient,
+                                               table: BigQueryTableReference)
   extends BaseRelation with TableScan with PrunedScan with PrunedFilteredScan with InsertableRelation {
 
   private val logger = LoggerFactory.getLogger(classOf[BigQueryTableRelation])

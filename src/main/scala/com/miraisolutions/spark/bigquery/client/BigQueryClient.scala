@@ -24,24 +24,28 @@ package com.miraisolutions.spark.bigquery.client
 import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 
+import com.google.cloud.RetryOption
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert
 import com.google.cloud.bigquery.JobInfo.{CreateDisposition, WriteDisposition}
 import com.google.cloud.bigquery.{Option => _, _}
 import com.miraisolutions.spark.bigquery.exception.IOException
 import com.miraisolutions.spark.bigquery.utils.SqlLogger
-import com.miraisolutions.spark.bigquery.{BigQuerySchemaConverter, BigQueryTableReference}
+import com.miraisolutions.spark.bigquery.{BigQuerySchemaConverter, BigQueryTableReference, FileExportFormat}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.slf4j.LoggerFactory
+import org.threeten.bp.Duration
 
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
+import scala.util.Random
 
 private object BigQueryClient {
-  // Table prefix for temporary tables
-  private val TEMP_TABLE_PREFIX = "spark_"
-  // Timestamp formatter for temporary tables
-  private val TEMP_TABLE_TIMESTAMP_FORMATTER =
+  // Prefix for temporary tables and directories
+  private val TEMP_PREFIX = "spark_"
+
+  // Timestamp formatter for temporary tables and GCS staging directories
+  private val TIMESTAMP_FORMATTER =
     DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneId.of("UTC"))
 }
 
@@ -97,15 +101,19 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
   }
 
   /**
+    * Creates a temporary name that can be used for temporary tables and directories.
+    */
+  private def createTempName(): String = {
+    TEMP_PREFIX + TIMESTAMP_FORMATTER.format(Instant.now()) + "_" + Random.nextInt(Int.MaxValue)
+  }
+
+  /**
     * Creates a new (unique) reference to a temporary table which will contain the results of an executed SQL query.
     * @return BigQuery table reference
     */
   private def createTemporaryTableReference(): BigQueryTableReference = {
-    import scala.util.Random
-
     val stagingDataset = getOrCreateStagingDataset()
-    val tempTableName = TEMP_TABLE_PREFIX + TEMP_TABLE_TIMESTAMP_FORMATTER.format(Instant.now()) + "_" +
-      Random.nextInt(Int.MaxValue)
+    val tempTableName = createTempName()
 
     BigQueryTableReference(stagingDataset.getProject, stagingDataset.getDataset, tempTableName)
   }
@@ -167,13 +175,15 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
     val schema = df.schema
 
     df foreachPartition { rows =>
-      val converter = BigQuerySchemaConverter.getSparkToBigQueryConverterFunction(schema)
-      val rowsToInsert = rows.map(row => RowToInsert.of(converter(row))).toIterable.asJava
-      val response = table.insert(rowsToInsert, false, false)
+      if(rows.nonEmpty) {
+        val converter = BigQuerySchemaConverter.getSparkToBigQueryConverterFunction(schema)
+        val rowsToInsert = rows.map(row => RowToInsert.of(converter(row))).toIterable.asJava
+        val response = table.insert(rowsToInsert, false, false)
 
-      if(response.hasErrors) {
-        val msg = response.getInsertErrors.asScala.values.flatMap(_.asScala.map(_.getMessage)).toSet.mkString("\n")
-        throw new IOException(msg)
+        if (response.hasErrors) {
+          val msg = response.getInsertErrors.asScala.values.flatMap(_.asScala.map(_.getMessage)).toSet.mkString("\n")
+          throw new IOException(msg)
+        }
       }
     }
   }
@@ -218,5 +228,35 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
           insertRows(df, tbl)
         }
     }
+  }
+
+  /**
+    * Exports a BigQuery table as a series of parquet files to a temporary directory in a Google Cloud Storage
+    * (GCS) bucket.
+    * @param table BigQuery table to export
+    * @param format File export format
+    * @return Temporary GCS staging directory containing the exported parquet files
+    * @see https://cloud.google.com/bigquery/docs/exporting-data
+    */
+  def exportTable(table: BigQueryTableReference, format: FileExportFormat): String = {
+    import config.stagingDataset._
+
+    val tempDirectoryName = createTempName()
+    val stagingDirectoryPath = s"gs://$gcsBucket/$name/$tempDirectoryName"
+    val destinationUri = s"$stagingDirectoryPath/${table.table}_*.${format.fileExtension}"
+
+    logger.info(s"Starting export of table $table to $destinationUri")
+
+    val job = bigquery.getTable(table).extract(format.bigQueryFormatIdentifier, destinationUri)
+    job.waitFor(
+      RetryOption.initialRetryDelay(Duration.ofSeconds(1)),
+      RetryOption.retryDelayMultiplier(1.2),
+      RetryOption.maxRetryDelay(Duration.ofSeconds(30)),
+      RetryOption.totalTimeout(Duration.ofHours(1)) // TODO: configure
+    )
+
+    logger.info(s"Done exporting table $table")
+
+    stagingDirectoryPath
   }
 }
