@@ -45,7 +45,7 @@ object Shakespeare {
       .option("bq.staging_dataset.location", args(1))
       .option("bq.staging_dataset.gcs_bucket", args(2))
       .option("table", "bigquery-public-data.samples.shakespeare")
-      .option("type", "direct")
+      .option("type", "json")
       .load()
 
     import spark.implicits._
@@ -63,6 +63,7 @@ object Shakespeare {
       .option("bq.staging_dataset.location", args(1))
       .option("bq.staging_dataset.gcs_bucket", args(2))
       .option("table", args(0) + ".samples.macbeth")
+      .option("type", "json")
       .save()
   }
 }

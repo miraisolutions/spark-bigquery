@@ -42,16 +42,14 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
   }
 
   /**
-    * Exports a BigQuery table to a GCS staging location and creates a corresponding Spark [[FileRelation]].
+    * Creates a Spark [[FileRelation]] for staged data files in a Google Cloud Storage (GCS) staging directory.
     * @param sqlContext Spark SQL context
-    * @param client BigQuery client
-    * @param table BigQuery table reference
+    * @param stagingDirectory Staging directory path
     * @param format File export format
-    * @return Spark [[BaseRelation]] for the exported data files
+    * @return Spark [[BaseRelation]] for the staged data files
     */
-  private def getTableExportFileRelation(sqlContext: SQLContext, client: BigQueryClient,
-                                         table: BigQueryTableReference, format: FileExportFormat): BaseRelation = {
-    val stagingDirectory = client.exportTable(table, format)
+  private def getStagingDataFileRelation(sqlContext: SQLContext, stagingDirectory: String,
+                                         format: FileFormat): BaseRelation = {
     val dataSource = DataSource(
       sparkSession = sqlContext.sparkSession,
       className = format.sparkFormatIdentifier,
@@ -93,8 +91,9 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
         BigQueryTableRelation(sqlContext, client, table)
 
       case tpe =>
-        val format = FileExportFormat(tpe)
-        getTableExportFileRelation(sqlContext, client, table, format)
+        val format = FileFormat(tpe)
+        val stagingDirectory = client.exportTable(table, format)
+        getStagingDataFileRelation(sqlContext, stagingDirectory, format)
     }
   }
 
@@ -108,7 +107,25 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
         "A parameter 'table' of the form [projectId].[datasetId].[tableId] must be specified."
       )
     )
-    client.writeTable(data, table, mode)
+
+    parameters.getOrElse("type", "direct") match {
+      case "direct" =>
+        client.writeTable(data, table, mode)
+
+      case tpe =>
+        val format = FileFormat(tpe)
+        val stagingDirectory = client.getStagingDirectory()
+
+        data.write
+            .format(format.sparkFormatIdentifier)
+            .save(stagingDirectory)
+
+        // Get a relation for the staged data files such that we can infer the schema
+        val relation = getStagingDataFileRelation(sqlContext, stagingDirectory, format)
+
+        client.importTable(stagingDirectory, format, relation.schema, table, mode)
+    }
+
     BigQueryTableRelation(sqlContext, client, table)
   }
 }

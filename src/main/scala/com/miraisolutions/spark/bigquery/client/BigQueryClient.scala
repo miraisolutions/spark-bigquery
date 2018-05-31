@@ -30,7 +30,7 @@ import com.google.cloud.bigquery.JobInfo.{CreateDisposition, WriteDisposition}
 import com.google.cloud.bigquery.{Option => _, _}
 import com.miraisolutions.spark.bigquery.exception.IOException
 import com.miraisolutions.spark.bigquery.utils.SqlLogger
-import com.miraisolutions.spark.bigquery.{BigQuerySchemaConverter, BigQueryTableReference, FileExportFormat}
+import com.miraisolutions.spark.bigquery.{BigQuerySchemaConverter, BigQueryTableReference, FileFormat}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.slf4j.LoggerFactory
@@ -231,32 +231,99 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
   }
 
   /**
-    * Exports a BigQuery table as a series of parquet files to a temporary directory in a Google Cloud Storage
-    * (GCS) bucket.
-    * @param table BigQuery table to export
-    * @param format File export format
-    * @return Temporary GCS staging directory containing the exported parquet files
-    * @see https://cloud.google.com/bigquery/docs/exporting-data
+    * Constructs a Google Cloud Storage (GCS) staging directory path that can be used to stage data files for data
+    * import and export.
+    * @return GCS directory path
     */
-  def exportTable(table: BigQueryTableReference, format: FileExportFormat): String = {
+  def getStagingDirectory(): String = {
     import config.stagingDataset._
 
     val tempDirectoryName = createTempName()
-    val stagingDirectoryPath = s"gs://$gcsBucket/$name/$tempDirectoryName"
-    val destinationUri = s"$stagingDirectoryPath/${table.table}_*.${format.fileExtension}"
+    s"gs://$gcsBucket/$name/$tempDirectoryName"
+  }
+
+  /**
+    * Exports a BigQuery table as a series of files to a temporary directory in a Google Cloud Storage (GCS) bucket.
+    * @param table BigQuery table to export
+    * @param format File export format
+    * @return Temporary GCS staging directory containing the exported files in the specified format
+    * @see https://cloud.google.com/bigquery/docs/exporting-data
+    */
+  def exportTable(table: BigQueryTableReference, format: FileFormat): String = {
+    val stagingDirectory = getStagingDirectory()
+    val destinationUri = s"$stagingDirectory/${table.table}_*.${format.fileExtension}"
 
     logger.info(s"Starting export of table $table to $destinationUri")
-
     val job = bigquery.getTable(table).extract(format.bigQueryFormatIdentifier, destinationUri)
-    job.waitFor(
+    waitForJob(job)
+    logger.info(s"Done exporting table $table")
+
+    stagingDirectory
+  }
+
+  /**
+    * Imports data from a Google Cloud Storage (GCS) directory into a BigQuery table.
+    * @param path GCS directory path
+    * @param format File format
+    * @param schema File schema
+    * @param table BigQuery table reference
+    * @param mode Save mode
+    */
+  def importTable(path: String, format: FileFormat, schema: StructType, table: BigQueryTableReference,
+                  mode: SaveMode): Unit = {
+    import SaveMode._
+
+    // TODO: be able to pass dataset location when creating dataset
+    getOrCreateDataset(table.project, table.dataset)(_.build())
+
+    val bqSchema = BigQuerySchemaConverter.fromSparkToBigQuery(schema)
+
+    val baseConfig = LoadJobConfiguration.builder(table, path + s"*.${format.fileExtension}")
+      .setAutodetect(false)
+      .setSchema(bqSchema)
+      .setIgnoreUnknownValues(false)
+      .setMaxBadRecords(0)
+      .setFormatOptions(format.bigQueryFormatOptions)
+      .setCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+
+    val (writeDisposition, ignoreDuplicateError) = mode match {
+      case Append =>
+        (WriteDisposition.WRITE_APPEND, false)
+
+      case Overwrite =>
+        (WriteDisposition.WRITE_TRUNCATE, false)
+
+      case ErrorIfExists =>
+        (WriteDisposition.WRITE_EMPTY, false)
+
+      case Ignore =>
+        (WriteDisposition.WRITE_EMPTY, true)
+    }
+
+    val jobInfo = JobInfo.of(baseConfig.setWriteDisposition(writeDisposition).build())
+    val job = bigquery.create(jobInfo)
+
+    logger.info(s"Starting import into table $table from $path")
+    waitForJob(job, ignoreDuplicateError)
+    logger.info(s"Done importing into table $table")
+  }
+
+  /**
+    * Waits for completion of a job and check for errors.
+    * @param job Job to wait for
+    * @param ignoreDuplicateError Whether to ignore duplicate errors or not
+    * @see https://cloud.google.com/bigquery/troubleshooting-errors
+    */
+  private def waitForJob(job: Job, ignoreDuplicateError: Boolean = false): Unit = {
+    val status = job.waitFor(
       RetryOption.initialRetryDelay(Duration.ofSeconds(1)),
       RetryOption.retryDelayMultiplier(1.2),
       RetryOption.maxRetryDelay(Duration.ofSeconds(30)),
       RetryOption.totalTimeout(Duration.ofHours(1)) // TODO: configure
-    )
+    ).getStatus
 
-    logger.info(s"Done exporting table $table")
-
-    stagingDirectoryPath
+    if(status.getError != null && (!ignoreDuplicateError || status.getError.getReason != "duplicate")) {
+      throw new IOException(s"BigQuery job ${job.getJobId} failed with message: ${status.getError.getMessage}")
+    }
   }
 }
