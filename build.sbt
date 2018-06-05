@@ -18,6 +18,13 @@ licenses += ("MIT", new URL("https://opensource.org/licenses/MIT"))
 
 scalaVersion := "2.11.11"
 
+scalacOptions ++= Seq(
+  "-target:jvm-1.8",
+  "-deprecation",
+  "-feature",
+  "-unchecked"
+)
+
 resolvers += Opts.resolver.sonatypeReleases
 
 val sparkVersion = "2.2.1"
@@ -26,8 +33,9 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
-  "com.google.cloud" % "google-cloud-bigquery" % "1.31.0",
+  "com.google.cloud" % "google-cloud-bigquery" % "1.32.0",
   "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2",
+  "com.databricks" %% "spark-avro" % "4.0.0",
   "org.scalatest" %% "scalatest" % "3.0.4" % "it,test",
   "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion}_0.9.0" % "it,test",
   "org.apache.spark" %% "spark-hive" % sparkVersion % "it,test" // required by spark-testing-base
@@ -59,6 +67,16 @@ assemblyMergeStrategy in assembly := {
     MergeStrategy.singleOrError
 }
 
+// Exclude avro-ipc tests jar
+assemblyExcludedJars in assembly := {
+  val cp = (fullClasspath in assembly).value
+  cp filter { _.data.getName == "avro-ipc-1.7.7-tests.jar" }
+}
+
+javaOptions in (Proguard, proguard) := Seq(
+  "-Xmx4g"
+)
+
 // https://github.com/sbt/sbt-proguard/issues/23
 // https://stackoverflow.com/questions/39655207/how-to-obfuscate-fat-scala-jar-with-proguard-and-sbt
 
@@ -79,6 +97,8 @@ proguardOptions in Proguard ++=
       |    public static **[] values();
       |    public static ** valueOf(java.lang.String);
       |}""".stripMargin,
+    "-keep class org.apache.avro.** { *; }",
+    "-keep class com.databricks.spark.avro.** { *; }",
     "-keep class shadegoogle.cloud.** { *; }",
     "-keep class shadegoogle.common.** { *; }",
     "-keep class shadegoogle.auth.** { *; }",
