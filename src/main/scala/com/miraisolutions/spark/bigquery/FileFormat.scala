@@ -73,12 +73,25 @@ private object FileFormat {
     override val fileExtension: String = "avro"
   }
 
+  /**
+    * Parquet format.
+    * @see https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet
+    */
+  case object PARQUET extends FileFormat {
+    override val sparkFormatIdentifier: String = "parquet"
+    override val bigQueryFormatIdentifier: String = "PARQUET"
+    // NOTE: importing from parquet is in beta while exporting to parquet is not yet supported
+    override val bigQueryFormatOptions: FormatOptions = FormatOptions.of("PARQUET")
+    override val fileExtension: String = "parquet"
+  }
+
   /** Creates a file format from a string. */
   def apply(format: String): FileFormat = {
     format.toLowerCase match {
+      case "parquet" => PARQUET
+      case "avro" => AVRO
       case "json" => JSON
       case "csv" => CSV
-      case "avro" => AVRO
       case _ =>
         throw new IllegalArgumentException(s"Unsupported file format: $format")
     }
