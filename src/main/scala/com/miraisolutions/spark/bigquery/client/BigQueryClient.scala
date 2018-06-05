@@ -253,7 +253,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
     val stagingDirectory = getStagingDirectory()
     val destinationUri = s"$stagingDirectory/${table.table}_*.${format.fileExtension}"
 
-    logger.info(s"Starting export of table $table to $destinationUri")
+    logger.info(s"Starting export of table $table to $destinationUri (format: $format)")
     val job = bigquery.getTable(table).extract(format.bigQueryFormatIdentifier, destinationUri)
     waitForJob(job)
     logger.info(s"Done exporting table $table")
@@ -303,7 +303,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
     val jobInfo = JobInfo.of(baseConfig.setWriteDisposition(writeDisposition).build())
     val job = bigquery.create(jobInfo)
 
-    logger.info(s"Starting import into table $table from $path")
+    logger.info(s"Starting import into table $table from $path (format: $format)")
     waitForJob(job, ignoreDuplicateError)
     logger.info(s"Done importing into table $table")
   }
