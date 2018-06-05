@@ -33,6 +33,7 @@ import com.google.common.io.BaseEncoding
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 
 /**
   * Schema conversion functions to convert schemas between Apache Spark and Google BigQuery.

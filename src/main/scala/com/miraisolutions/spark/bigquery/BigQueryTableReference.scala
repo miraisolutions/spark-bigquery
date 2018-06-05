@@ -23,6 +23,7 @@ package com.miraisolutions.spark.bigquery
 
 import com.google.cloud.bigquery.{Table, TableId}
 import com.miraisolutions.spark.bigquery.exception.ParseException
+import scala.language.implicitConversions
 
 /**
   * BigQuery table reference
