@@ -47,6 +47,12 @@ Defaults.itSettings
 
 IntegrationTest / fork := true
 
+IntegrationTest / javaOptions ++= Seq(
+  "-Xmx2048m",
+  "-Xms512m",
+  "-XX:+CMSClassUnloadingEnabled"
+)
+
 enablePlugins(SbtProguard)
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
