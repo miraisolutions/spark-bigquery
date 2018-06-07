@@ -16,7 +16,7 @@ startYear := Some(2018)
 
 licenses += ("MIT", new URL("https://opensource.org/licenses/MIT"))
 
-scalaVersion := "2.11.11"
+scalaVersion := "2.11.12"
 
 scalacOptions ++= Seq(
   "-target:jvm-1.8",
