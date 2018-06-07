@@ -24,12 +24,10 @@ package com.miraisolutions.spark.bigquery
 import com.google.cloud.bigquery._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
-import java.sql.Timestamp
-import java.time.Instant
-import java.util
 
 import LegacySQLTypeName._
 import com.google.common.io.BaseEncoding
+import com.miraisolutions.spark.bigquery.utils.DateTime
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 
 import scala.collection.JavaConverters._
@@ -95,7 +93,7 @@ private object BigQuerySchemaConverter {
         TimestampType
 
       case DATE =>
-        StringType
+        DateType
 
       case TIME =>
         // Not supported in Spark
@@ -142,9 +140,9 @@ private object BigQuerySchemaConverter {
         case StructType(fields) =>
           value.getRecordValue.asScala.zip(fields.map(_.dataType)).map((getRowValue _).tupled).toArray
         case TimestampType =>
-          Timestamp.from(Instant.ofEpochMilli(value.getTimestampValue / 1000))
+          DateTime.epochMicrosToTimestamp(value.getTimestampValue)
         case DateType =>
-          value.getStringValue
+          DateTime.parseDate(value.getStringValue)
       }
     }
   }
@@ -229,7 +227,7 @@ private object BigQuerySchemaConverter {
         f(TIMESTAMP)
 
       case DateType =>
-        f(STRING)
+        f(DATE)
 
       case t: MapType =>
         val (keyField, valueField) = customKeyValueStructFields(t)
@@ -251,9 +249,9 @@ private object BigQuerySchemaConverter {
     * @param schema Spark schema
     * @return Function to convert a Spark row to a BigQuery row
     */
-  def getSparkToBigQueryConverterFunction(schema: StructType): Row => util.Map[String, Any] = { row =>
+  def getSparkToBigQueryConverterFunction(schema: StructType): Row => java.util.Map[String, Any] = { row =>
     val meta = fromSparkToBigQuery(schema)
-    val result = new util.HashMap[String, Any](meta.getFields.size)
+    val result = new java.util.HashMap[String, Any](meta.getFields.size)
 
     meta.getFields.asScala foreach { field =>
       result.put(field.getName, getFieldValue(row, field))
@@ -293,7 +291,7 @@ private object BigQuerySchemaConverter {
           row.getLong(idx)
 
         case (FloatType, FLOAT) =>
-          row.getFloat(idx)
+          row.getFloat(idx).toDouble
 
         case (DoubleType, FLOAT) =>
           row.getDouble(idx)
@@ -310,7 +308,7 @@ private object BigQuerySchemaConverter {
 
         case (StructType(_), RECORD) =>
           val struct = row.getStruct(idx)
-          val result = new util.HashMap[String, Any](struct.size)
+          val result = new java.util.HashMap[String, Any](struct.size)
 
           field.getSubFields.asScala foreach { subField =>
             result.put(subField.getName, getFieldValue(struct, subField))
@@ -319,14 +317,14 @@ private object BigQuerySchemaConverter {
 
         case (TimestampType, TIMESTAMP) =>
           // BigQuery requires specifying the number of seconds since the epoch
-          row.getTimestamp(idx).getTime.toDouble / 1000
+          DateTime.timestampToEpochSeconds(row.getTimestamp(idx))
 
-        case (DateType, STRING) =>
-          row.getDate(idx).toString
+        case (DateType, DATE) =>
+          DateTime.formatDate(row.getDate(idx))
 
         case (t: MapType, RECORD) =>
           val m = row.getMap[Any, Any](idx)
-          val result = new util.HashMap[Any, Any](m.size)
+          val result = new java.util.HashMap[Any, Any](m.size)
 
           val (keyField, valueField) = customKeyValueStructFields(t)
           val mapSchema = StructType(Array(keyField, valueField))
