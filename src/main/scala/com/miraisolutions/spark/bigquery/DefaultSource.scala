@@ -116,6 +116,9 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
         val format = FileFormat(tpe)
         val stagingDirectory = client.getStagingDirectory()
 
+        // Use TIMESTAMP_MICROS in Parquet (supported since Spark 2.3.0)
+        sqlContext.setConf("spark.sql.parquet.outputTimestampType", "TIMESTAMP_MICROS")
+
         data.write
             .format(format.sparkFormatIdentifier)
             .save(stagingDirectory)
