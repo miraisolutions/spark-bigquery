@@ -120,10 +120,7 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
             .format(format.sparkFormatIdentifier)
             .save(stagingDirectory)
 
-        // Get a relation for the staged data files such that we can infer the schema
-        val relation = getStagingDataFileRelation(sqlContext, stagingDirectory, format)
-
-        client.importTable(stagingDirectory, format, relation.schema, table, mode)
+        client.importTable(stagingDirectory, format, table, mode)
     }
 
     BigQueryTableRelation(sqlContext, client, table)

@@ -265,22 +265,17 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
     * Imports data from a Google Cloud Storage (GCS) directory into a BigQuery table.
     * @param path GCS directory path
     * @param format File format
-    * @param schema File schema
     * @param table BigQuery table reference
     * @param mode Save mode
     */
-  def importTable(path: String, format: FileFormat, schema: StructType, table: BigQueryTableReference,
-                  mode: SaveMode): Unit = {
+  def importTable(path: String, format: FileFormat, table: BigQueryTableReference, mode: SaveMode): Unit = {
     import SaveMode._
 
     // TODO: be able to pass dataset location when creating dataset
     getOrCreateDataset(table.project, table.dataset)(_.build())
 
-    val bqSchema = BigQuerySchemaConverter.fromSparkToBigQuery(schema)
-
     val baseConfig = LoadJobConfiguration.builder(table, path + s"*.${format.fileExtension}")
-      .setAutodetect(false)
-      .setSchema(bqSchema)
+      .setAutodetect(true)
       .setIgnoreUnknownValues(false)
       .setMaxBadRecords(0)
       .setFormatOptions(format.bigQueryFormatOptions)
@@ -303,7 +298,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
     val jobInfo = JobInfo.of(baseConfig.setWriteDisposition(writeDisposition).build())
     val job = bigquery.create(jobInfo)
 
-    logger.info(s"Starting import into table $table from $path (format: $format)")
+    logger.info(s"Starting import into table $table from $path (format: $format, mode: $mode)")
     waitForJob(job, ignoreDuplicateError)
     logger.info(s"Done importing into table $table")
   }
