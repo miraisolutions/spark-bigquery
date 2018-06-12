@@ -33,17 +33,17 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
-  "com.google.cloud" % "google-cloud-bigquery" % "1.32.0",
+  "com.google.cloud" % "google-cloud-bigquery" % "1.33.0",
   "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2",
   "com.databricks" %% "spark-avro" % "4.0.0",
-  "org.scalatest" %% "scalatest" % "3.0.4" % "it,test",
+  "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
   "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion}_0.9.0" % "it,test",
   "org.apache.spark" %% "spark-hive" % sparkVersion % "it,test" // required by spark-testing-base
 )
 
 configs(IntegrationTest)
 
-Defaults.itSettings
+Defaults.itSettings ++ headerSettings(IntegrationTest)
 
 IntegrationTest / fork := true
 
@@ -52,6 +52,8 @@ IntegrationTest / javaOptions ++= Seq(
   "-Xms512m",
   "-XX:+CMSClassUnloadingEnabled"
 )
+
+IntegrationTest / logBuffered := false
 
 enablePlugins(SbtProguard)
 

@@ -19,11 +19,11 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery.client
+package com.miraisolutions.spark.bigquery.config
 
 import com.google.cloud.bigquery.QueryJobConfiguration.Priority
 
-private object StagingDatasetConfig {
+private[bigquery] object StagingDatasetConfig {
   private val namespace = "bq.staging_dataset."
 
   val DESCRIPTION = "Spark BigQuery staging dataset"
@@ -33,6 +33,7 @@ private object StagingDatasetConfig {
     val LOCATION = namespace + "location"
     val LIFETIME = namespace + "lifetime"
     val GCS_BUCKET = namespace + "gcs_bucket"
+    val SERVICE_ACCOUNT_KEY_FILE = namespace + "service_account_key_file"
   }
 
   object Defaults {
@@ -41,10 +42,15 @@ private object StagingDatasetConfig {
   }
 }
 
-private[bigquery] case class StagingDatasetConfig(name: String, location: String, lifetime: Long, gcsBucket: String)
+case class StagingDatasetConfig(
+  name: String = StagingDatasetConfig.Defaults.NAME,
+  location: String,
+  lifetime: Long = StagingDatasetConfig.Defaults.LIFETIME,
+  gcsBucket: String,
+  serviceAccountKeyFile: Option[String] = None)
 
 
-private object JobConfig {
+private[bigquery] object JobConfig {
   private val namespace = "bq.job."
 
   object Keys {
@@ -56,13 +62,13 @@ private object JobConfig {
   }
 }
 
-private[bigquery] case class JobConfig(priority: Priority)
+case class JobConfig(priority: Priority = JobConfig.Defaults.PRIORITY)
 
 
 private[bigquery] object BigQueryConfig {
   private val namespace = "bq."
 
-  private object Keys {
+  object Keys {
     val PROJECT = namespace + "project"
   }
 
@@ -73,7 +79,8 @@ private[bigquery] object BigQueryConfig {
       name = parameters.getOrElse(StagingDatasetConfig.Keys.NAME, StagingDatasetConfig.Defaults.NAME),
       location = parameters(StagingDatasetConfig.Keys.LOCATION),
       lifetime = parameters.get(StagingDatasetConfig.Keys.LIFETIME).map(_.toLong).getOrElse(StagingDatasetConfig.Defaults.LIFETIME),
-      gcsBucket = parameters(StagingDatasetConfig.Keys.GCS_BUCKET)
+      gcsBucket = parameters(StagingDatasetConfig.Keys.GCS_BUCKET),
+      serviceAccountKeyFile = parameters.get(StagingDatasetConfig.Keys.SERVICE_ACCOUNT_KEY_FILE)
     )
 
     val job = JobConfig(priority = parameters.get(JobConfig.Keys.PRIORITY).map(Priority.valueOf).getOrElse(JobConfig.Defaults.PRIORITY))
@@ -82,4 +89,4 @@ private[bigquery] object BigQueryConfig {
   }
 }
 
-private[bigquery] case class BigQueryConfig(project: String, stagingDataset: StagingDatasetConfig, job: JobConfig)
+case class BigQueryConfig(project: String, stagingDataset: StagingDatasetConfig, job: JobConfig = JobConfig())

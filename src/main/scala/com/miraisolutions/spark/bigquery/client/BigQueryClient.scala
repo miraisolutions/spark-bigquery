@@ -28,6 +28,7 @@ import com.google.cloud.RetryOption
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert
 import com.google.cloud.bigquery.JobInfo.{CreateDisposition, WriteDisposition}
 import com.google.cloud.bigquery.{Option => _, _}
+import com.miraisolutions.spark.bigquery.config.{BigQueryConfig, StagingDatasetConfig}
 import com.miraisolutions.spark.bigquery.exception.IOException
 import com.miraisolutions.spark.bigquery.utils.SqlLogger
 import com.miraisolutions.spark.bigquery.{BigQuerySchemaConverter, BigQueryTableReference, FileFormat}
@@ -54,7 +55,7 @@ private object BigQueryClient {
   *
   * @param config BigQuery configuration
   */
-private[bigquery] class BigQueryClient(config: BigQueryConfig) {
+private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
   import BigQueryClient._
 
   // Google BigQuery client using application default credentials
@@ -254,7 +255,7 @@ private[bigquery] class BigQueryClient(config: BigQueryConfig) {
     val destinationUri = s"$stagingDirectory/${table.table}_*.${format.fileExtension}"
 
     logger.info(s"Starting export of table $table to $destinationUri (format: $format)")
-    val job = bigquery.getTable(table).extract(format.bigQueryFormatIdentifier, destinationUri)
+    val job = bigquery.getTable(table).extract(format.bigQueryFormatOptions.getType, destinationUri)
     waitForJob(job)
     logger.info(s"Done exporting table $table")
 
