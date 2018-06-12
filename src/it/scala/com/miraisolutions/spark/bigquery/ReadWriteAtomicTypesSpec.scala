@@ -86,7 +86,7 @@ class ReadWriteAtomicTypesSpec extends FunSuite with DataFrameSuiteBase with RDD
           .load()
           .persist()
 
-        assertDataFrameEquals(df.aligned, x)
+        assertDataFrameEquals(df.aligned, x.aligned)
       }
     }
   }

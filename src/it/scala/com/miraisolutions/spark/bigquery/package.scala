@@ -21,10 +21,23 @@
 
 package com.miraisolutions.spark
 
+import java.sql.Timestamp
+
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.functions.udf
 
 package object bigquery {
+
+  // Rounds a timestamp to milliseconds
+  private def roundTimestampToMillis(ts: Timestamp): Timestamp = {
+    val roundedTs = new Timestamp(ts.getTime)
+    roundedTs.setNanos(Math.round(ts.getNanos / 1e6).toInt)
+    roundedTs
+  }
+
+  // Spark SQL UDF to round timestamps to milliseconds
+  private val roundTimestampToMillisUdf = udf(roundTimestampToMillis _)
 
   /**
     * Implicit helper class to align column types in a data frame to types supported in BigQuery
@@ -43,6 +56,10 @@ package object bigquery {
 
           case FloatType =>
             cast(df, field.name, DoubleType)
+
+          case TimestampType =>
+            // See https://github.com/GoogleCloudPlatform/google-cloud-java/issues/3356
+            df.withColumn(field.name, roundTimestampToMillisUdf(df.col(field.name)))
 
           case _ =>
             df
