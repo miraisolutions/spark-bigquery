@@ -42,6 +42,19 @@ private[bigquery] object StagingDatasetConfig {
   }
 }
 
+/**
+  * BigQuery staging dataset configuration. A staging dataset is used to temporarily store the results of SQL queries.
+  * @param name Name of staging dataset
+  * @param location Geographic location where the dataset should reside. "EU" or "US".
+  * @param lifetime Default table lifetime in milliseconds. Tables are automatically deleted once the lifetime has
+  *                 been reached.
+  * @param gcsBucket Google Cloud Storage (GCS) bucket to use for storing temporary files. Temporary files are used
+  *                  when importing through BigQuery load jobs and exporting through BigQuery extraction jobs.
+  * @param serviceAccountKeyFile Optional Google Cloud service account key file to use for authentication with
+  *                              Google Cloud Storage. The use of service accounts is highly recommended.
+  * @see https://cloud.google.com/bigquery/docs/dataset-locations
+  * @see https://cloud.google.com/storage/docs/authentication#service_accounts
+  */
 case class StagingDatasetConfig(
   name: String = StagingDatasetConfig.Defaults.NAME,
   location: String,
@@ -62,6 +75,12 @@ private[bigquery] object JobConfig {
   }
 }
 
+/**
+  * BigQuery job configuration options.
+  * @param priority BigQuery job priority when executing SQL queries. Defaults to "interactive", i.e. the
+  *                 query is executed as soon as possible.
+  * @see https://cloud.google.com/bigquery/quota-policy
+  */
 case class JobConfig(priority: Priority = JobConfig.Defaults.PRIORITY)
 
 
@@ -89,4 +108,10 @@ private[bigquery] object BigQueryConfig {
   }
 }
 
+/**
+  * BigQuery configuration.
+  * @param project BigQuery billing project ID.
+  * @param stagingDataset BigQuery staging dataset configuration options.
+  * @param job BigQuery job configuration options.
+  */
 case class BigQueryConfig(project: String, stagingDataset: StagingDatasetConfig, job: JobConfig = JobConfig())

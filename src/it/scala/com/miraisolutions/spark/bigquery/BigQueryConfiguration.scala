@@ -41,6 +41,12 @@ trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite with DataFr
   private var config: BigQueryConfig = _
 
   protected implicit class DataFrameReaderTestConfig(val reader: DataFrameReader) {
+    /**
+      * Applies BigQuery test configuration options derived from parameters passed to the test.
+      * @param table BigQuery table to read
+      * @param importType Import type (e.g. "direct", "parquet", "avro", ...)
+      * @return Spark [[DataFrameReader]]
+      */
     def bigqueryTest(table: String, importType: String = "direct"): DataFrameReader = {
       applyDataFrameOptions(reader, config)
         .option("table", s"${config.project}.$BIGQUERY_TEST_DATASET.$table")
@@ -49,6 +55,12 @@ trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite with DataFr
   }
 
   protected implicit class DataFrameWriterTestConfig(val writer: DataFrameWriter[Row]) {
+    /**
+      * Applies BigQuery test configuration options derived from parameters passed to the test.
+      * @param table BigQuery table to write
+      * @param exportType Export type (e.g. "direct", "parquet", "avro", ...)
+      * @return Spark [[DataFrameWriter]]
+      */
     def bigqueryTest(table: String, exportType: String = "direct"): DataFrameWriter[Row] = {
       applyDataFrameOptions(writer, config)
         .option("table", s"${config.project}.$BIGQUERY_TEST_DATASET.$table")
@@ -57,6 +69,7 @@ trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite with DataFr
   }
 
   abstract override def withFixture(test: NoArgTest): Outcome = {
+    // Extract BigQuery configuration from config map
     config = BigQueryConfig(test.configMap.mapValues(_.toString))
     super.withFixture(test)
   }

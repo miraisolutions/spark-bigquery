@@ -31,7 +31,7 @@ import org.apache.spark.sql.sources._
 import org.apache.spark.sql.execution.FileRelation
 
 /**
-  * Google BigQuery default data source
+  * Google BigQuery default data source.
   */
 class DefaultSource extends RelationProvider with CreatableRelationProvider with DataSourceRegister {
   import DefaultSource._

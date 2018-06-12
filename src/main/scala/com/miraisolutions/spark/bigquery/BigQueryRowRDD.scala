@@ -27,7 +27,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 
 /**
-  * BigQuery row RDD
+  * BigQuery row RDD which reads a BigQuery table by streaming records through a set of pages.
   * @param sc Spark context
   * @param table Table reader used to read a BigQuery table through a number of partitions
   */

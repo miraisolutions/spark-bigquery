@@ -26,13 +26,16 @@ import com.miraisolutions.spark.bigquery.config._
 
 /**
   * Reads the public Google BigQuery sample dataset 'shakespeare'.
-  * See [[https://cloud.google.com/bigquery/public-data/]].
   *
   * Run by providing:
   *  1. Google BigQuery billing project ID
   *  1. Google BigQuery staging dataset location (EU, US)
   *  1. Google Cloud Storage (GCS) bucket where staging files will be located
   *  1. Google Cloud service account key file
+  *
+  * @see https://cloud.google.com/bigquery/public-data/
+  * @see https://cloud.google.com/bigquery/docs/dataset-locations
+  * @see https://cloud.google.com/storage/docs/authentication#service_accounts
   */
 object Shakespeare {
   def main(args: Array[String]): Unit = {

@@ -33,7 +33,7 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
   *
   * Run in sbt via:
   *
-  * it:testOnly com.miraisolutions.spark.bigquery.* --
+  * it:testOnly com.miraisolutions.spark.bigquery.ReadWriteAtomicTypesSpec --
   * -Dbq.project=<project>
   * -Dbq.staging_dataset.location=<location>
   * -Dbq.staging_dataset.gcs_bucket=<gcs_bucket>
