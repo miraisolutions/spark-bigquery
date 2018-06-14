@@ -34,17 +34,19 @@ package object config {
 
   // Applies format and configuration options on a DataFrameReader or DataFrameWriter
   private[bigquery] def applyDataFrameOptions[T <: OPT[T]](obj: T, config: BigQueryConfig): T = {
+    import config._
+
     val objWithOptions =
       obj
         .format(DefaultSource.BIGQUERY_DATA_SOURCE_NAME)
-        .option(BigQueryConfig.Keys.PROJECT, config.project)
-        .option(StagingDatasetConfig.Keys.NAME, config.stagingDataset.name)
-        .option(StagingDatasetConfig.Keys.LOCATION, config.stagingDataset.location)
-        .option(StagingDatasetConfig.Keys.LIFETIME, config.stagingDataset.lifetime.toString)
-        .option(StagingDatasetConfig.Keys.GCS_BUCKET, config.stagingDataset.gcsBucket)
-        .option(JobConfig.Keys.PRIORITY, config.job.priority.toString)
+        .option(BigQueryConfig.Keys.PROJECT, project)
+        .option(BigQueryConfig.Keys.LOCATION, location)
+        .option(StagingDatasetConfig.Keys.NAME, stagingDataset.name)
+        .option(StagingDatasetConfig.Keys.LIFETIME, stagingDataset.lifetime.toString)
+        .option(StagingDatasetConfig.Keys.GCS_BUCKET, stagingDataset.gcsBucket)
+        .option(JobConfig.Keys.PRIORITY, job.priority.toString)
 
-    config.stagingDataset.serviceAccountKeyFile.fold(objWithOptions) { file =>
+    stagingDataset.serviceAccountKeyFile.fold(objWithOptions) { file =>
       objWithOptions.option(StagingDatasetConfig.Keys.SERVICE_ACCOUNT_KEY_FILE, file)
     }
   }

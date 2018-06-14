@@ -30,7 +30,6 @@ private[bigquery] object StagingDatasetConfig {
 
   object Keys {
     val NAME = namespace + "name"
-    val LOCATION = namespace + "location"
     val LIFETIME = namespace + "lifetime"
     val GCS_BUCKET = namespace + "gcs_bucket"
     val SERVICE_ACCOUNT_KEY_FILE = namespace + "service_account_key_file"
@@ -45,7 +44,6 @@ private[bigquery] object StagingDatasetConfig {
 /**
   * BigQuery staging dataset configuration. A staging dataset is used to temporarily store the results of SQL queries.
   * @param name Name of staging dataset
-  * @param location Geographic location where the dataset should reside. "EU" or "US".
   * @param lifetime Default table lifetime in milliseconds. Tables are automatically deleted once the lifetime has
   *                 been reached.
   * @param gcsBucket Google Cloud Storage (GCS) bucket to use for storing temporary files. Temporary files are used
@@ -57,10 +55,10 @@ private[bigquery] object StagingDatasetConfig {
   */
 case class StagingDatasetConfig(
   name: String = StagingDatasetConfig.Defaults.NAME,
-  location: String,
   lifetime: Long = StagingDatasetConfig.Defaults.LIFETIME,
   gcsBucket: String,
-  serviceAccountKeyFile: Option[String] = None)
+  serviceAccountKeyFile: Option[String] = None
+)
 
 
 private[bigquery] object JobConfig {
@@ -68,10 +66,12 @@ private[bigquery] object JobConfig {
 
   object Keys {
     val PRIORITY = namespace + "priority"
+    val TIMEOUT = namespace + "timeout"
   }
 
   object Defaults {
     val PRIORITY = Priority.INTERACTIVE
+    val TIMEOUT = 3600000L
   }
 }
 
@@ -79,9 +79,14 @@ private[bigquery] object JobConfig {
   * BigQuery job configuration options.
   * @param priority BigQuery job priority when executing SQL queries. Defaults to "interactive", i.e. the
   *                 query is executed as soon as possible.
+  * @param timeout Timeout in milliseconds after which a file import/export job should be considered as failed.
+  *                Defaults to 3600000 ms = 1 h.
   * @see https://cloud.google.com/bigquery/quota-policy
   */
-case class JobConfig(priority: Priority = JobConfig.Defaults.PRIORITY)
+case class JobConfig(
+  priority: Priority = JobConfig.Defaults.PRIORITY,
+  timeout: Long = JobConfig.Defaults.TIMEOUT
+)
 
 
 private[bigquery] object BigQueryConfig {
@@ -89,29 +94,44 @@ private[bigquery] object BigQueryConfig {
 
   object Keys {
     val PROJECT = namespace + "project"
+    val LOCATION = namespace + "location"
   }
 
   def apply(parameters: Map[String, String]): BigQueryConfig = {
     val project = parameters(Keys.PROJECT)
+    val location = parameters(Keys.LOCATION)
 
     val stagingDataset = StagingDatasetConfig(
       name = parameters.getOrElse(StagingDatasetConfig.Keys.NAME, StagingDatasetConfig.Defaults.NAME),
-      location = parameters(StagingDatasetConfig.Keys.LOCATION),
-      lifetime = parameters.get(StagingDatasetConfig.Keys.LIFETIME).map(_.toLong).getOrElse(StagingDatasetConfig.Defaults.LIFETIME),
+      lifetime = parameters.get(StagingDatasetConfig.Keys.LIFETIME).map(_.toLong)
+        .getOrElse(StagingDatasetConfig.Defaults.LIFETIME),
       gcsBucket = parameters(StagingDatasetConfig.Keys.GCS_BUCKET),
       serviceAccountKeyFile = parameters.get(StagingDatasetConfig.Keys.SERVICE_ACCOUNT_KEY_FILE)
     )
 
-    val job = JobConfig(priority = parameters.get(JobConfig.Keys.PRIORITY).map(Priority.valueOf).getOrElse(JobConfig.Defaults.PRIORITY))
+    val job = JobConfig(
+      priority = parameters.get(JobConfig.Keys.PRIORITY).map(Priority.valueOf).getOrElse(JobConfig.Defaults.PRIORITY),
+      timeout = parameters.get(JobConfig.Keys.TIMEOUT).map(_.toLong).getOrElse(JobConfig.Defaults.TIMEOUT)
+    )
 
-    BigQueryConfig(project, stagingDataset, job)
+    BigQueryConfig(project, location , stagingDataset, job)
   }
 }
 
 /**
   * BigQuery configuration.
   * @param project BigQuery billing project ID.
+  * @param location Geographic location where newly created datasets should reside. "EU" or "US".
+  *                 This holds for new datasets that are being created as part of a Spark write operation and for
+  *                 temporary staging datasets.
   * @param stagingDataset BigQuery staging dataset configuration options.
   * @param job BigQuery job configuration options.
+  * @see https://cloud.google.com/bigquery/pricing
+  * @see https://cloud.google.com/bigquery/docs/dataset-locations
   */
-case class BigQueryConfig(project: String, stagingDataset: StagingDatasetConfig, job: JobConfig = JobConfig())
+case class BigQueryConfig(
+  project: String,
+  location: String,
+  stagingDataset: StagingDatasetConfig,
+  job: JobConfig = JobConfig()
+)

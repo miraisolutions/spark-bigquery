@@ -72,13 +72,14 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
     * @return BigQuery [[Dataset]]
     */
   private def getOrCreateDataset(project: String, dataset: String)
-                                (build: DatasetInfo.Builder => DatasetInfo): Dataset = {
+                                (build: DatasetInfo.Builder => DatasetInfo.Builder): Dataset = {
     val datasetId = DatasetId.of(project, dataset)
     Option(bigquery.getDataset(datasetId)).getOrElse {
       logger.info(s"Creating dataset '$dataset' in project '$project'")
 
       val datasetBuilder = DatasetInfo.newBuilder(datasetId)
-      val datasetInfo = build(datasetBuilder)
+      // New datasets are always created in the configured location
+      val datasetInfo = build(datasetBuilder).setLocation(config.location).build()
       bigquery.create(datasetInfo)
     }
   }
@@ -90,12 +91,10 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
   private def getOrCreateStagingDataset(): DatasetId = {
     import config._
 
-    val ds = getOrCreateDataset(project, stagingDataset.name + "_" + stagingDataset.location) { builder =>
+    val ds = getOrCreateDataset(project, stagingDataset.name + "_" + location) { builder =>
       builder
         .setDefaultTableLifetime(stagingDataset.lifetime)
         .setDescription(StagingDatasetConfig.DESCRIPTION)
-        .setLocation(stagingDataset.location)
-        .build()
     }
 
     ds.getDatasetId
@@ -201,8 +200,7 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
     logger.info(s"Attempting to insert ${df.count()} rows to table $table" +
       s" (mode: $mode, partitions: ${df.rdd.getNumPartitions})")
 
-    // TODO: be able to pass dataset location when creating dataset
-    val ds = getOrCreateDataset(table.project, table.dataset)(_.build())
+    val ds = getOrCreateDataset(table.project, table.dataset)(identity)
 
     val schema = BigQuerySchemaConverter.fromSparkToBigQuery(df.schema)
 
@@ -272,8 +270,7 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
   def importTable(path: String, format: FileFormat, table: BigQueryTableReference, mode: SaveMode): Unit = {
     import SaveMode._
 
-    // TODO: be able to pass dataset location when creating dataset
-    getOrCreateDataset(table.project, table.dataset)(_.build())
+    getOrCreateDataset(table.project, table.dataset)(identity)
 
     val baseConfig = LoadJobConfiguration.builder(table, path + s"*.${format.fileExtension}")
       .setAutodetect(true)
@@ -315,7 +312,7 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
       RetryOption.initialRetryDelay(Duration.ofSeconds(1)),
       RetryOption.retryDelayMultiplier(1.2),
       RetryOption.maxRetryDelay(Duration.ofSeconds(30)),
-      RetryOption.totalTimeout(Duration.ofHours(1)) // TODO: configure
+      RetryOption.totalTimeout(Duration.ofMillis(config.job.timeout))
     ).getStatus
 
     if(status.getError != null && (!ignoreDuplicateError || status.getError.getReason != "duplicate")) {

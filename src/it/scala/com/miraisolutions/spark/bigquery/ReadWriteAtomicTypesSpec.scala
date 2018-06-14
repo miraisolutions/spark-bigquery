@@ -23,7 +23,7 @@ package com.miraisolutions.spark.bigquery
 
 import com.holdenkarau.spark.testing.{DataFrameSuiteBase, RDDComparisons}
 import com.miraisolutions.spark.bigquery.data.{DataFrameGenerator, TestData}
-import org.apache.spark.sql.types.{DecimalType, StructType, TimestampType}
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.scalatest.FunSuite
 import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
@@ -35,7 +35,7 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
   *
   * it:testOnly com.miraisolutions.spark.bigquery.ReadWriteAtomicTypesSpec --
   * -Dbq.project=<project>
-  * -Dbq.staging_dataset.location=<location>
+  * -Dbq.location=<location>
   * -Dbq.staging_dataset.gcs_bucket=<gcs_bucket>
   * -Dbq.staging_dataset.service_account_key_file=<path_to_keyfile>
   */
