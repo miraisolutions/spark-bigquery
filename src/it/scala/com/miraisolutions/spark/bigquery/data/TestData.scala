@@ -25,9 +25,11 @@ import org.apache.spark.sql.types._
 
 private[bigquery] object TestData {
 
-  // Atomic types currently without DecimalType and BinaryType
+  // Atomic types currently without BinaryType
   private val atomicTypes: Set[DataType] = Set(BooleanType, ByteType, ShortType, IntegerType, LongType, FloatType,
-    DoubleType, StringType, TimestampType, DateType)
+    DoubleType, StringType, TimestampType, DateType, DataTypes.createDecimalType(38, 9),
+    DataTypes.createDecimalType(12, 4), DataTypes.createDecimalType(33, 4),
+    DataTypes.createDecimalType(7,7))
 
   private def createName(dt: DataType, nullable: Boolean): String = {
     val base = dt.simpleString.replaceAll("[^A-Za-z]+", "")

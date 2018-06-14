@@ -24,10 +24,12 @@ package com.miraisolutions.spark
 import java.sql.Timestamp
 
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.udf
 
 package object bigquery {
+  import BigQuerySchemaConverter.BIGQUERY_NUMERIC_DECIMAL
 
   // Rounds a timestamp to milliseconds
   private def roundTimestampToMillis(ts: Timestamp): Timestamp = {
@@ -57,9 +59,14 @@ package object bigquery {
           case FloatType =>
             cast(df, field.name, DoubleType)
 
+          case dt: DecimalType if dt.precision < 38 =>
+            // NOTE: Casting to decimal seems to change the nullable property of the column;
+            // we therefore need to reset the original nullable property
+            setNullable(cast(df, field.name, BIGQUERY_NUMERIC_DECIMAL), field.name, field.nullable)
+
           case TimestampType =>
             // See https://github.com/GoogleCloudPlatform/google-cloud-java/issues/3356
-            df.withColumn(field.name, roundTimestampToMillisUdf(df.col(field.name)))
+            transform(df, field.name, roundTimestampToMillisUdf)
 
           case _ =>
             df
@@ -71,5 +78,22 @@ package object bigquery {
   // Casts a column in a data frame to a target type
   private def cast(df: DataFrame, columnName: String, dataType: DataType): DataFrame = {
     df.withColumn(columnName, df.col(columnName).cast(dataType))
+  }
+
+  // Applies a column transformation using a UDF
+  private def transform[A, B](df: DataFrame, columnName: String, f: UserDefinedFunction): DataFrame = {
+    df.withColumn(columnName, f(df.col(columnName)))
+  }
+
+  // Sets the nullable property of a column
+  private def setNullable(df: DataFrame, columnName: String, nullable: Boolean): DataFrame = {
+    val newFields = df.schema.fields map {
+      case field: StructField if field.name == columnName =>
+        field.copy(nullable = nullable)
+
+      case field =>
+        field
+    }
+    df.sqlContext.createDataFrame(df.rdd, StructType(newFields))
   }
 }

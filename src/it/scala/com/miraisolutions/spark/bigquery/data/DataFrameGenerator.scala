@@ -21,6 +21,7 @@
 
 package com.miraisolutions.spark.bigquery.data
 
+import java.math.BigInteger
 import java.sql.{Date, Timestamp}
 import java.time._
 
@@ -70,33 +71,42 @@ object DataFrameGenerator {
     * @return Generator of values of the specified data type
     */
   private def getGeneratorForType(dataType: DataType): Gen[Any] = {
+    import Arbitrary._
+
     dataType match {
       case ByteType =>
-        Arbitrary.arbitrary[Byte]
+        arbitrary[Byte]
 
       case ShortType =>
-        Arbitrary.arbitrary[Short]
+        arbitrary[Short]
 
       case IntegerType =>
-        Arbitrary.arbitrary[Int]
+        arbitrary[Int]
 
       case LongType =>
-        Arbitrary.arbitrary[Long]
+        arbitrary[Long]
 
       case FloatType =>
-        Arbitrary.arbitrary[Float]
+        arbitrary[Float]
 
       case DoubleType =>
-        Arbitrary.arbitrary[Double]
+        arbitrary[Double]
+
+      case dt: DecimalType =>
+        for {
+          digits <- Gen.listOfN(dt.precision, Gen.numChar)
+          sign <- Gen.oneOf("", "-")
+          unscaledValue = new BigInteger(sign + digits.mkString)
+        } yield new java.math.BigDecimal(unscaledValue, dt.scale)
 
       case StringType =>
-        Arbitrary.arbitrary[String]
+        arbitrary[String]
 
       case BinaryType =>
-        Arbitrary.arbitrary[Array[Byte]]
+        arbitrary[Array[Byte]]
 
       case BooleanType =>
-        Arbitrary.arbitrary[Boolean]
+        arbitrary[Boolean]
 
       case TimestampType =>
         // See https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types

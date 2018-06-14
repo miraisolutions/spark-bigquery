@@ -35,8 +35,13 @@ import scala.language.postfixOps
 
 /**
   * Schema conversion functions to convert schemas between Apache Spark and Google BigQuery.
+  * @see https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
   */
-private object BigQuerySchemaConverter {
+private[bigquery] object BigQuerySchemaConverter {
+
+  // BigQuery's NUMERIC is a Decimal with precision 38 and scale 9;
+  // See https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
+  private[bigquery] val BIGQUERY_NUMERIC_DECIMAL = DataTypes.createDecimalType(38, 9)
 
   private val KEY_FIELD_NAME = "key"
   private val VALUE_FIELD_NAME = "value"
@@ -78,6 +83,9 @@ private object BigQuerySchemaConverter {
 
       case FLOAT =>
         DoubleType
+
+      case NUMERIC =>
+        BIGQUERY_NUMERIC_DECIMAL
 
       case STRING =>
         StringType
@@ -131,6 +139,8 @@ private object BigQuerySchemaConverter {
           value.getLongValue
         case DoubleType =>
           value.getDoubleValue
+        case _: DecimalType =>
+          value.getNumericValue
         case StringType =>
           value.getStringValue
         case BinaryType =>
@@ -210,6 +220,10 @@ private object BigQuerySchemaConverter {
 
       case DoubleType =>
         f(FLOAT)
+
+      case dt: DecimalType if dt.precision <= BIGQUERY_NUMERIC_DECIMAL.precision &&
+        dt.scale <= BIGQUERY_NUMERIC_DECIMAL.scale =>
+        f(NUMERIC)
 
       case _: DecimalType =>
         f(STRING)
@@ -296,8 +310,11 @@ private object BigQuerySchemaConverter {
         case (DoubleType, FLOAT) =>
           row.getDouble(idx)
 
-        case (_: DecimalType, STRING) =>
+        case (_: DecimalType, NUMERIC) =>
           row.getDecimal(idx)
+
+        case (_: DecimalType, STRING) =>
+          row.getDecimal(idx).toPlainString
 
         case (StringType, STRING) =>
           row.getString(idx)

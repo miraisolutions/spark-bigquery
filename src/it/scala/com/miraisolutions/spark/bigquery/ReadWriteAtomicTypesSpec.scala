@@ -23,7 +23,7 @@ package com.miraisolutions.spark.bigquery
 
 import com.holdenkarau.spark.testing.{DataFrameSuiteBase, RDDComparisons}
 import com.miraisolutions.spark.bigquery.data.{DataFrameGenerator, TestData}
-import org.apache.spark.sql.types.{StructType, TimestampType}
+import org.apache.spark.sql.types.{DecimalType, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.scalatest.FunSuite
 import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
@@ -63,7 +63,7 @@ class ReadWriteAtomicTypesSpec extends FunSuite with DataFrameSuiteBase with RDD
     assertTrue(mismatch.isEmpty)
   }
 
-  TestData.atomicFields.filter(_.dataType == TimestampType) foreach { field =>
+  TestData.atomicFields foreach { field =>
 
     test(s"Columns of type ${field.dataType} (nullable: ${field.nullable}) can be written to and read from BigQuery") {
 
