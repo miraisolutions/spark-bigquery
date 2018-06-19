@@ -41,6 +41,12 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-hive" % sparkVersion % "it,test" // required by spark-testing-base
 )
 
+excludeDependencies ++= Seq(
+  ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
+  ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark 2.2.x
+  ExclusionRule("commons-lang", "commons-lang") // clashes with Spark 2.2.x
+)
+
 configs(IntegrationTest)
 
 Defaults.itSettings ++ headerSettings(IntegrationTest)
