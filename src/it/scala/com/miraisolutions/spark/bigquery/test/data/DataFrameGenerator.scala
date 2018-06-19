@@ -19,7 +19,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery.data
+package com.miraisolutions.spark.bigquery.test.data
 
 import java.math.BigInteger
 import java.sql.{Date, Timestamp}

@@ -97,6 +97,10 @@ private[bigquery] object BigQueryConfig {
     val LOCATION = namespace + "location"
   }
 
+  /**
+    * Constructs typed BigQuery configuration options from a parameter map.
+    * @param parameters Parameter map
+    */
   def apply(parameters: Map[String, String]): BigQueryConfig = {
     val project = parameters(Keys.PROJECT)
     val location = parameters(Keys.LOCATION)

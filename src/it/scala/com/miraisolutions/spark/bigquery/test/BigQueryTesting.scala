@@ -19,28 +19,13 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery
+package com.miraisolutions.spark.bigquery.test
 
 import com.holdenkarau.spark.testing.{DataFrameSuiteBase, RDDComparisons}
-import com.miraisolutions.spark.bigquery.data.{DataFrameGenerator, TestData}
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, SaveMode}
-import org.scalatest.FunSuite
-import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
+import org.apache.spark.sql.DataFrame
+import org.scalatest.TestSuite
 
-/**
-  * Test suite which tests reading and writing Spark atomic types to and from BigQuery.
-  *
-  * Run in sbt via:
-  *
-  * it:testOnly com.miraisolutions.spark.bigquery.ReadWriteAtomicTypesSpec --
-  * -Dbq.project=<project>
-  * -Dbq.location=<location>
-  * -Dbq.staging_dataset.gcs_bucket=<gcs_bucket>
-  * -Dbq.staging_dataset.service_account_key_file=<path_to_keyfile>
-  */
-class ReadWriteAtomicTypesSpec extends FunSuite with DataFrameSuiteBase with RDDComparisons with Checkers
-  with GeneratorDrivenPropertyChecks with BigQueryConfiguration {
+trait BigQueryTesting extends BigQueryConfiguration with DataFrameSuiteBase with RDDComparisons { this: TestSuite =>
 
   // See https://github.com/holdenk/spark-testing-base/issues/148
   // See https://issues.apache.org/jira/browse/SPARK-22918
@@ -61,33 +46,5 @@ class ReadWriteAtomicTypesSpec extends FunSuite with DataFrameSuiteBase with RDD
     }
 
     assertTrue(mismatch.isEmpty)
-  }
-
-  TestData.atomicFields foreach { field =>
-
-    test(s"Columns of type ${field.dataType} (nullable: ${field.nullable}) can be written to and read from BigQuery") {
-
-      implicit val generatorDrivenConfig = PropertyCheckConfiguration(minSuccessful = 2, minSize = 10, sizeRange = 20)
-
-      val schema = StructType(List(field))
-      implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
-
-      val table = "test"
-
-      forAll { df: DataFrame =>
-
-        df.write
-          .mode(SaveMode.Overwrite)
-          .bigqueryTest(table, exportType = "parquet")
-          .save()
-
-        val x = spark.read
-          .bigqueryTest(table)
-          .load()
-          .persist()
-
-        assertDataFrameEquals(df.aligned, x.aligned)
-      }
-    }
   }
 }

@@ -19,16 +19,16 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark
+package com.miraisolutions.spark.bigquery
 
 import java.sql.Timestamp
 
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.types._
 
-package object bigquery {
+package object test {
   import BigQuerySchemaConverter.BIGQUERY_NUMERIC_DECIMAL
 
   // Rounds a timestamp to milliseconds
@@ -60,8 +60,9 @@ package object bigquery {
             cast(df, field.name, DoubleType)
 
           case dt: DecimalType if dt.precision < 38 =>
-            // NOTE: Casting to decimal seems to change the nullable property of the column;
-            // we therefore need to reset the original nullable property
+            // NOTE: Casting to decimal changes the nullable property of the column;
+            // we therefore need to reset the original nullable property;
+            // see https://stackoverflow.com/q/50854815
             setNullable(cast(df, field.name, BIGQUERY_NUMERIC_DECIMAL), field.name, field.nullable)
 
           case TimestampType =>

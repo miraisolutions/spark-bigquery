@@ -95,7 +95,7 @@ private[bigquery] object BigQuerySchemaConverter {
 
       case RECORD =>
         val fields = field.getSubFields.asScala.map(bigQueryToSparkField)
-        StructType(fields)
+        StructType(fields.toArray)
 
       case TIMESTAMP =>
         TimestampType
@@ -148,7 +148,7 @@ private[bigquery] object BigQuerySchemaConverter {
         case ArrayType(elementType, _) =>
           value.getRepeatedValue.asScala.map(getRowValue(_, elementType)).toArray
         case StructType(fields) =>
-          value.getRecordValue.asScala.zip(fields.map(_.dataType)).map((getRowValue _).tupled).toArray
+          Row(value.getRecordValue.asScala.zip(fields.map(_.dataType)).map((getRowValue _).tupled): _*)
         case TimestampType =>
           DateTime.epochMicrosToTimestamp(value.getTimestampValue)
         case DateType =>

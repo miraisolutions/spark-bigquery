@@ -19,11 +19,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery
+package com.miraisolutions.spark.bigquery.test
 
-import com.miraisolutions.spark.bigquery.config._
-import com.holdenkarau.spark.testing.DataFrameSuiteBase
-import com.miraisolutions.spark.bigquery.config.BigQueryConfig
+import com.miraisolutions.spark.bigquery.config.{BigQueryConfig, _}
 import org.apache.spark.sql.{DataFrameReader, DataFrameWriter, Row}
 import org.scalatest.{Outcome, TestSuite, TestSuiteMixin}
 
@@ -33,9 +31,15 @@ private object BigQueryConfiguration {
 }
 
 /**
-  * BigQuery configuration test suite mixin.
+  * BigQuery configuration test suite mixin. Tests mixing in that trait can be run in sbt via:
+  *
+  * it:testOnly com.miraisolutions.spark.bigquery.* --
+  * -Dbq.project=<project>
+  * -Dbq.location=<location>
+  * -Dbq.staging_dataset.gcs_bucket=<gcs_bucket>
+  * -Dbq.staging_dataset.service_account_key_file=<path_to_keyfile>
   */
-trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite with DataFrameSuiteBase =>
+trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
   import BigQueryConfiguration._
 
   private var config: BigQueryConfig = _
