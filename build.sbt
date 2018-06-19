@@ -110,7 +110,8 @@ proguardOptions in Proguard ++=
     "-keep class shadegoogle.cloud.** { *; }",
     "-keep class shadegoogle.common.** { *; }",
     "-keep class shadegoogle.auth.** { *; }",
-    "-keep class com.miraisolutions.spark.bigquery.** { *; }"
+    "-keep class com.miraisolutions.spark.bigquery.** { *; }",
+    "-keep class org.apache.commons.logging.** { *; }"
   )
 
 proguardInputs in Proguard := Seq(baseDirectory.value / "target" / s"scala-${scalaVersion.value.dropRight(3)}" /
