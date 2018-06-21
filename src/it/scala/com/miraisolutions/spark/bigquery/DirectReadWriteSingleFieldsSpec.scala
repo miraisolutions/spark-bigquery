@@ -36,7 +36,8 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
   * a waiting time of up to 90 minutes (https://cloud.google.com/bigquery/streaming-data-into-bigquery), this test suite
   * only verifies the correctness of the generated BigQuery schema.
   */
-class DirectReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with Checkers with GeneratorDrivenPropertyChecks {
+class DirectReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with Checkers
+  with GeneratorDrivenPropertyChecks {
 
   override implicit val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 2, minSize = 10, sizeRange = 20)

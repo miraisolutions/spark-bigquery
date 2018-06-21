@@ -33,7 +33,7 @@ import org.scalacheck.{Arbitrary, Gen}
 /**
   * Generator of arbitrary Spark data frames used in property-based testing.
   */
-object DataFrameGenerator {
+private[bigquery] object DataFrameGenerator {
 
   // Min and max BigQuery timestamp and date values
   // See https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types

@@ -25,7 +25,8 @@ import com.holdenkarau.spark.testing.{DataFrameSuiteBase, RDDComparisons}
 import org.apache.spark.sql.DataFrame
 import org.scalatest.TestSuite
 
-trait BigQueryTesting extends BigQueryConfiguration with DataFrameSuiteBase with RDDComparisons { this: TestSuite =>
+private[bigquery] trait BigQueryTesting extends BigQueryConfiguration with DataFrameSuiteBase
+  with RDDComparisons { this: TestSuite =>
 
   // See https://github.com/holdenk/spark-testing-base/issues/148
   // See https://issues.apache.org/jira/browse/SPARK-22918

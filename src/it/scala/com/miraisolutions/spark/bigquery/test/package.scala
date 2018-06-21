@@ -51,7 +51,7 @@ package object test {
     * suitable for comparison.
     * @param dataFrame Source data frame
     */
-  implicit class AlignedDataFrame(val dataFrame: DataFrame) extends AnyVal {
+  private[bigquery] implicit class AlignedDataFrame(val dataFrame: DataFrame) extends AnyVal {
     /**
       * Converts/casts columns to the appropriate types supported in BigQuery and types which are suitable for
       * comparison.

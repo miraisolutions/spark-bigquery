@@ -40,7 +40,7 @@ private object BigQueryConfiguration {
   * -Dbq.staging_dataset.gcs_bucket=<gcs_bucket>
   * -Dbq.staging_dataset.service_account_key_file=<path_to_keyfile>
   */
-trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
+private[bigquery] trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
   import BigQueryConfiguration._
 
   // Captured BigQuery test configuration
