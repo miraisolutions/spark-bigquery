@@ -32,8 +32,14 @@ import scala.language.implicitConversions
   * @param table Table ID
   */
 private final case class BigQueryTableReference(project: String, dataset: String, table: String) {
+
+  /** Returns the unquoted table identifier (BigQuery Standard SQL) */
+  def unquotedIdentifier: String = s"$project.$dataset.$table"
+  /** Returns the quoted table identifier (BigQuery Standard SQL) */
+  def quotedIdentifier: String = "`" + unquotedIdentifier + "`"
+
   /** BigQuery Standard SQL table identifier (quoted) */
-  override def toString: String = s"`$project.$dataset.$table`"
+  override def toString: String = quotedIdentifier
 }
 
 private object BigQueryTableReference {

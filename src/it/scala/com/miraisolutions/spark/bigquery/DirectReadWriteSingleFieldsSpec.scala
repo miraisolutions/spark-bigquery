@@ -21,10 +21,10 @@
 
 package com.miraisolutions.spark.bigquery
 
+import com.miraisolutions.spark.bigquery.client.BigQueryClient
 import com.miraisolutions.spark.bigquery.test._
 import com.miraisolutions.spark.bigquery.test.data.{DataFrameGenerator, TestData}
-import com.miraisolutions.spark.bigquery.utils.FormatConverter
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.scalatest.FunSuite
 import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
@@ -32,45 +32,37 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
 /**
   * Test suite which tests reading and writing single Spark fields/columns to and from BigQuery.
   *
-  * Data frames are written to BigQuery via Parquet export to ensure data is immediately available for querying and
-  * doesn't end up in BigQuery's streaming buffer as it would when using "direct" mode.
-  *
-  * @see https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet
-  * @see https://cloud.google.com/bigquery/streaming-data-into-bigquery
+  * Data frames are written to BigQuery via "direct" export. Because attempts to query the new fields might require
+  * a waiting time of up to 90 minutes (https://cloud.google.com/bigquery/streaming-data-into-bigquery), this test suite
+  * only verifies the correctness of the generated BigQuery schema.
   */
-class ReadWriteSingleFieldSpec extends FunSuite with BigQueryTesting with Checkers with GeneratorDrivenPropertyChecks {
+class DirectReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with Checkers with GeneratorDrivenPropertyChecks {
 
   override implicit val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 2, minSize = 10, sizeRange = 20)
 
-  private val testTable = "test"
+  private val bigQueryClient = new BigQueryClient(config)
+  private val testTable = "direct_test"
   private val testFields = TestData.atomicFields ++ TestData.arrayFields
 
   testFields foreach { field =>
 
     test(s"Columns of type ${field.dataType} (nullable: ${field.nullable}) " +
-      s"can be written to and read from BigQuery") {
+      "can be written to and read from BigQuery using \"direct\" imports (streaming)") {
 
       val schema = StructType(List(field))
       implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
 
-      forAll { out: DataFrame =>
-
-        out.write
+      forAll { df: DataFrame =>
+        df.write
           .mode(SaveMode.Overwrite)
-          .bigqueryTest(testTable, exportType = "parquet")
+          .bigqueryTest(testTable)
           .save()
 
-        val in = spark.read
-          .bigqueryTest(testTable)
-          .load()
-          .persist()
+        val schema = bigQueryClient.getSchema(getTestDatasetTableReference(testTable))
 
-        val inTransformed = FormatConverter.parquetListsAsArrays(in)
-
-        assertDataFrameEquals(out.aligned, inTransformed.aligned)
+        assert(df.schema, schema)
       }
     }
   }
-
 }

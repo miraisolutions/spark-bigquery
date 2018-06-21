@@ -21,6 +21,7 @@
 
 package com.miraisolutions.spark.bigquery.test
 
+import com.miraisolutions.spark.bigquery.BigQueryTableReference
 import com.miraisolutions.spark.bigquery.config.{BigQueryConfig, _}
 import org.apache.spark.sql.{DataFrameReader, DataFrameWriter, Row}
 import org.scalatest.{Outcome, TestSuite, TestSuiteMixin}
@@ -42,7 +43,26 @@ private object BigQueryConfiguration {
 trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
   import BigQueryConfiguration._
 
-  private var config: BigQueryConfig = _
+  // Captured BigQuery test configuration
+  var config: BigQueryConfig = _
+
+  /**
+    * Construct a table reference to a table in the configured BigQuery test dataset.
+    * @param table Table name
+    * @return BigQuery table reference
+    */
+  protected def getTestDatasetTableReference(table: String): BigQueryTableReference = {
+    BigQueryTableReference(config.project, BIGQUERY_TEST_DATASET, table)
+  }
+
+  /**
+    * Gets the unquoted table identifier for a table in the configured BigQuery test dataset.
+    * @param table Table name
+    * @return Unquoted table identifier
+    */
+  protected def getTestDatasetTableIdentifier(table: String): String = {
+    getTestDatasetTableReference(table).unquotedIdentifier
+  }
 
   protected implicit class DataFrameReaderTestConfig(val reader: DataFrameReader) {
     /**
@@ -53,7 +73,7 @@ trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
       */
     def bigqueryTest(table: String, importType: String = "direct"): DataFrameReader = {
       applyDataFrameOptions(reader, config)
-        .option("table", s"${config.project}.$BIGQUERY_TEST_DATASET.$table")
+        .option("table", getTestDatasetTableIdentifier(table))
         .option("type", importType)
     }
   }
@@ -67,11 +87,12 @@ trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
       */
     def bigqueryTest(table: String, exportType: String = "direct"): DataFrameWriter[Row] = {
       applyDataFrameOptions(writer, config)
-        .option("table", s"${config.project}.$BIGQUERY_TEST_DATASET.$table")
+        .option("table", getTestDatasetTableIdentifier(table))
         .option("type", exportType)
     }
   }
 
+  // See {{TestSuiteMixin}}
   abstract override def withFixture(test: NoArgTest): Outcome = {
     // Extract BigQuery configuration from config map
     config = BigQueryConfig(test.configMap.mapValues(_.toString))
