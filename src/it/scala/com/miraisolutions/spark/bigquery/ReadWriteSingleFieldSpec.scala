@@ -28,6 +28,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.scalatest.FunSuite
 import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
+import FormatConverter._
 
 /**
   * Test suite which tests reading and writing single Spark fields/columns to and from BigQuery.
@@ -41,10 +42,10 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
 class ReadWriteSingleFieldSpec extends FunSuite with BigQueryTesting with Checkers with GeneratorDrivenPropertyChecks {
 
   override implicit val generatorDrivenConfig =
-    PropertyCheckConfiguration(minSuccessful = 2, minSize = 10, sizeRange = 20)
+    PropertyCheckConfiguration(minSuccessful = 1, minSize = 10, sizeRange = 10)
 
   private val testTable = "test"
-  private val testFields = TestData.atomicFields ++ TestData.arrayFields
+  private val testFields = TestData.atomicFields ++ TestData.arrayFields ++ TestData.mapFields
 
   testFields foreach { field =>
 
@@ -66,7 +67,7 @@ class ReadWriteSingleFieldSpec extends FunSuite with BigQueryTesting with Checke
           .load()
           .persist()
 
-        val inTransformed = FormatConverter.parquetListsAsArrays(in)
+        val inTransformed = transform(in, List(parquetListToArray, parquetMapToMap))
 
         assertDataFrameEquals(out.aligned, inTransformed.aligned)
       }

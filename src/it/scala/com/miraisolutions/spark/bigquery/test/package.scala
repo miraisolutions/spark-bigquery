@@ -23,9 +23,9 @@ package com.miraisolutions.spark.bigquery
 
 import java.sql.Timestamp
 
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.{base64, udf}
+import org.apache.spark.sql.functions.{base64, explode_outer, udf}
 import org.apache.spark.sql.types._
 
 package object test {
@@ -41,10 +41,6 @@ package object test {
   // Spark SQL UDF to round timestamps to milliseconds
   private val roundTimestampToMillisUdf = udf(roundTimestampToMillis _)
 
-  // Spark SQL UDF to round an array of timestamps to milliseconds
-  private val roundTimestampToMillisArrayUdf = udf((ts: collection.mutable.WrappedArray[Timestamp]) =>
-    ts.map(roundTimestampToMillis))
-
 
   /**
     * Implicit helper class to align column types in a data frame to types supported in BigQuery and types
@@ -54,7 +50,17 @@ package object test {
   private[bigquery] implicit class AlignedDataFrame(val dataFrame: DataFrame) extends AnyVal {
     /**
       * Converts/casts columns to the appropriate types supported in BigQuery and types which are suitable for
-      * comparison.
+      * comparison. Specifically:
+      *
+      * - BigQuery only supports 8 byte integer and floating point types.
+      *
+      * - BigQuery only supports decimal types with precision 38 and scale 9
+      *
+      * - Binary types are converted to base64 encoded strings for comparison
+      *
+      * - Array and map types are exploded for easier comparison
+      *
+      * @see [[https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types]]
       */
     def aligned: DataFrame = {
       dataFrame.schema.fields.foldLeft(dataFrame) { case (df, field) =>
@@ -79,14 +85,11 @@ package object test {
             // Array[Byte] cannot be compared easily so we encode in Base64
             df.withColumn(field.name, base64(df.col(field.name)))
 
-          case ArrayType(elementType, containsNull) if List(ByteType, ShortType, IntegerType) contains elementType =>
-            cast(df, field.name, ArrayType(LongType, containsNull))
+          case _: ArrayType =>
+            explode(df, field.name).aligned
 
-          case ArrayType(FloatType, containsNull) =>
-            cast(df, field.name, ArrayType(DoubleType, containsNull))
-
-          case ArrayType(TimestampType, _) =>
-            transform(df, field.name, roundTimestampToMillisArrayUdf)
+          case _: MapType =>
+            explode(df, field.name, _.as(Seq(field.name + "_key", field.name + "_value"))).aligned
 
           case _ =>
             df
@@ -115,5 +118,10 @@ package object test {
         field
     }
     df.sqlContext.createDataFrame(df.rdd, StructType(newFields))
+  }
+
+  // Explodes a nested column such as an array or map column
+  private def explode(df: DataFrame, columnName: String, f: Column => Column = identity): DataFrame = {
+    df.select(df.col("*"), f(explode_outer(df.col(columnName)))).drop(columnName)
   }
 }
