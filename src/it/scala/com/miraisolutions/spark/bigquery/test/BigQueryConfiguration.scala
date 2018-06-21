@@ -42,7 +42,8 @@ private object BigQueryConfiguration {
 trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
   import BigQueryConfiguration._
 
-  private var config: BigQueryConfig = _
+  var config: BigQueryConfig = _
+  lazy val tablePrefix = s"${config.project}.$BIGQUERY_TEST_DATASET"
 
   protected implicit class DataFrameReaderTestConfig(val reader: DataFrameReader) {
     /**
@@ -53,7 +54,7 @@ trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
       */
     def bigqueryTest(table: String, importType: String = "direct"): DataFrameReader = {
       applyDataFrameOptions(reader, config)
-        .option("table", s"${config.project}.$BIGQUERY_TEST_DATASET.$table")
+        .option("table", s"$tablePrefix.$table")
         .option("type", importType)
     }
   }
@@ -67,7 +68,7 @@ trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
       */
     def bigqueryTest(table: String, exportType: String = "direct"): DataFrameWriter[Row] = {
       applyDataFrameOptions(writer, config)
-        .option("table", s"${config.project}.$BIGQUERY_TEST_DATASET.$table")
+        .option("table", s"$tablePrefix.$table")
         .option("type", exportType)
     }
   }
