@@ -35,8 +35,8 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
   * Data frames are written to BigQuery via Parquet export to ensure data is immediately available for querying and
   * doesn't end up in BigQuery's streaming buffer as it would when using "direct" mode.
   *
-  * @see https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet
-  * @see https://cloud.google.com/bigquery/streaming-data-into-bigquery
+  * @see [[https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet]]
+  * @see [[https://cloud.google.com/bigquery/streaming-data-into-bigquery]]
   */
 class ReadWriteSingleFieldSpec extends FunSuite with BigQueryTesting with Checkers with GeneratorDrivenPropertyChecks {
 

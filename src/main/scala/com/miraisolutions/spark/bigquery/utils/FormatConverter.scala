@@ -26,6 +26,9 @@ import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types._
 
+/**
+  * Provides format conversion utility methods.
+  */
 object FormatConverter {
 
   private val PARQUET_LIST_LIST_FIELD_NAME = "list"
@@ -35,7 +38,7 @@ object FormatConverter {
     * Creates a Spark UDF to convert a Parquet-List-structured column to an Array column.
     * @param arrayType Resulting array type
     * @return Spark UDF
-    * @see https://github.com/apache/parquet-format/blob/master/LogicalTypes.md
+    * @see [[https://github.com/apache/parquet-format/blob/master/LogicalTypes.md]]
     */
   private def parquetListToArrayUdf(arrayType: ArrayType): UserDefinedFunction = udf((row: Row) => {
     row.getAs[Seq[Row]](PARQUET_LIST_LIST_FIELD_NAME).map(_.getAs[Any](PARQUET_LIST_ELEMENT_FIELD_NAME))
@@ -45,6 +48,7 @@ object FormatConverter {
     * Transforms any Parquet-style array-formatted columns to Spark array columns. Other columns remain unchanged.
     * @param df Input data frame
     * @return Output data frame
+    * @see [[https://github.com/apache/parquet-format/blob/master/LogicalTypes.md]]
     */
   def parquetListsAsArrays(df: DataFrame): DataFrame = {
     val transformed = df.schema.fields.foldRight((df, List.empty[StructField])) { case (field, (aggDf, aggFields)) =>

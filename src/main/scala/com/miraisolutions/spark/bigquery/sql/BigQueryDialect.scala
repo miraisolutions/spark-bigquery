@@ -26,7 +26,7 @@ import org.apache.spark.sql.jdbc.JdbcDialect
 /**
   * Google BigQuery standard SQL dialect (SQL-2011)
   *
-  * @see https://cloud.google.com/bigquery/docs/reference/standard-sql/
+  * @see [[https://cloud.google.com/bigquery/docs/reference/standard-sql/]]
   */
 private case object BigQueryDialect extends JdbcDialect {
 

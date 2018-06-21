@@ -90,8 +90,8 @@ private[bigquery] object DefaultSource {
     * @param conf Spark Hadoop configuration
     * @param project Google Cloud project
     * @param serviceAccountKeyFile Optional Google Cloud service account key file
-    * @see https://cloud.google.com/storage/docs/authentication#service_accounts
-    * @see https://github.com/GoogleCloudPlatform/bigdata-interop/blob/master/gcs/INSTALL.md
+    * @see [[https://cloud.google.com/storage/docs/authentication#service_accounts]]
+    * @see [[https://github.com/GoogleCloudPlatform/bigdata-interop/blob/master/gcs/INSTALL.md]]
     */
   private def initHadoop(conf: Configuration, project: String, serviceAccountKeyFile: Option[String]): Unit = {
     conf.set("fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")

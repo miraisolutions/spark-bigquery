@@ -30,7 +30,7 @@ import org.apache.spark.sql.sources.Filter
   * Google BigQuery SQL Generation
   *
   * @param table BigQuery table reference
-  * @see https://cloud.google.com/bigquery/docs/reference/standard-sql/
+  * @see [[https://cloud.google.com/bigquery/docs/reference/standard-sql/]]
   */
 private[bigquery] case class BigQuerySqlGeneration(table: BigQueryTableReference) {
 

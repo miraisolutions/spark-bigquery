@@ -40,7 +40,7 @@ private[bigquery] object BigQueryTableReader {
   * @param totalRows Total number of rows to read (across all pages)
   * @param suggestedNumPartitions Suggested number of target partitions. The effective number of partitions may
   *                               be different.
-  * @see https://cloud.google.com/bigquery/docs/paging-results
+  * @see [[https://cloud.google.com/bigquery/docs/paging-results]]
   */
 private[bigquery] case class BigQueryTableReader private (table: Table, totalRows: Long, suggestedNumPartitions: Int) {
   import BigQueryTableReader._

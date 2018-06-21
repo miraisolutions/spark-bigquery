@@ -50,8 +50,8 @@ private[bigquery] object StagingDatasetConfig {
   *                  when importing through BigQuery load jobs and exporting through BigQuery extraction jobs.
   * @param serviceAccountKeyFile Optional Google Cloud service account key file to use for authentication with
   *                              Google Cloud Storage. The use of service accounts is highly recommended.
-  * @see https://cloud.google.com/bigquery/docs/dataset-locations
-  * @see https://cloud.google.com/storage/docs/authentication#service_accounts
+  * @see [[https://cloud.google.com/bigquery/docs/dataset-locations]]
+  * @see [[https://cloud.google.com/storage/docs/authentication#service_accounts]]
   */
 case class StagingDatasetConfig(
   name: String = StagingDatasetConfig.Defaults.NAME,
@@ -81,7 +81,7 @@ private[bigquery] object JobConfig {
   *                 query is executed as soon as possible.
   * @param timeout Timeout in milliseconds after which a file import/export job should be considered as failed.
   *                Defaults to 3600000 ms = 1 h.
-  * @see https://cloud.google.com/bigquery/quota-policy
+  * @see [[https://cloud.google.com/bigquery/quota-policy]]
   */
 case class JobConfig(
   priority: Priority = JobConfig.Defaults.PRIORITY,
@@ -130,8 +130,8 @@ private[bigquery] object BigQueryConfig {
   *                 temporary staging datasets.
   * @param stagingDataset BigQuery staging dataset configuration options.
   * @param job BigQuery job configuration options.
-  * @see https://cloud.google.com/bigquery/pricing
-  * @see https://cloud.google.com/bigquery/docs/dataset-locations
+  * @see [[https://cloud.google.com/bigquery/pricing]]
+  * @see [[https://cloud.google.com/bigquery/docs/dataset-locations]]
   */
 case class BigQueryConfig(
   project: String,

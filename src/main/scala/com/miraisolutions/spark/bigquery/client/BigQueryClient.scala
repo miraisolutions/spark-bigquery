@@ -246,7 +246,7 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
     * @param table BigQuery table to export
     * @param format File export format
     * @return Temporary GCS staging directory containing the exported files in the specified format
-    * @see https://cloud.google.com/bigquery/docs/exporting-data
+    * @see [[https://cloud.google.com/bigquery/docs/exporting-data]]
     */
   def exportTable(table: BigQueryTableReference, format: FileFormat): String = {
     val stagingDirectory = getStagingDirectory()
@@ -305,7 +305,7 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
     * Waits for completion of a job and check for errors.
     * @param job Job to wait for
     * @param ignoreDuplicateError Whether to ignore duplicate errors or not
-    * @see https://cloud.google.com/bigquery/troubleshooting-errors
+    * @see [[https://cloud.google.com/bigquery/troubleshooting-errors]]
     */
   private def waitForJob(job: Job, ignoreDuplicateError: Boolean = false): Unit = {
     val status = job.waitFor(

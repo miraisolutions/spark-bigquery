@@ -35,7 +35,7 @@ import scala.language.postfixOps
 
 /**
   * Schema conversion functions to convert schemas between Apache Spark and Google BigQuery.
-  * @see https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
+  * @see [[https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types]]
   */
 private[bigquery] object BigQuerySchemaConverter {
 

@@ -27,15 +27,27 @@ import com.miraisolutions.spark.bigquery.config._
 /**
   * Reads the public Google BigQuery sample dataset 'shakespeare'.
   *
-  * Run by providing:
+  * To run this example first compile an assembly using `sbt assembly`. Then run:
+  *
+  * ==Local Spark Cluster==
+  * `spark-submit --class com.miraisolutions.spark.bigquery.examples.Shakespeare --master local[*]
+  * target/scala-2.11/spark-bigquery-assembly-<version>.jar <arguments>`
+  *
+  * ==Google Cloud Dataproc==
+  * `gcloud dataproc jobs submit spark --cluster <cluster> --class
+  * com.miraisolutions.spark.bigquery.examples.Shakespeare --jars
+  * target/scala-2.11/spark-bigquery-assembly-<version>.jar -- <argument>`
+  *
+  * Where `<arguments>` are:
   *  1. Google BigQuery billing project ID
   *  1. Google BigQuery dataset location (EU, US)
   *  1. Google Cloud Storage (GCS) bucket where staging files will be located
   *  1. Google Cloud service account key file
   *
-  * @see https://cloud.google.com/bigquery/public-data/
-  * @see https://cloud.google.com/bigquery/docs/dataset-locations
-  * @see https://cloud.google.com/storage/docs/authentication#service_accounts
+  * @see [[https://cloud.google.com/bigquery/public-data/]]
+  * @see [[https://cloud.google.com/bigquery/docs/dataset-locations]]
+  * @see [[https://cloud.google.com/storage/docs/authentication#service_accounts]]
+  * @see [[https://cloud.google.com/dataproc/]]
   */
 object Shakespeare {
   def main(args: Array[String]): Unit = {

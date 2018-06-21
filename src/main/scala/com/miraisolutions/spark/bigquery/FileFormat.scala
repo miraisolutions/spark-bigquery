@@ -39,7 +39,7 @@ private object FileFormat {
 
   /**
     * JSON format.
-    * @see https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json
+    * @see [[https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json]]
     */
   case object JSON extends FileFormat {
     override val sparkFormatIdentifier: String = "json"
@@ -49,7 +49,7 @@ private object FileFormat {
 
   /**
     * CSV format.
-    * @see https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv
+    * @see [[https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv]]
     */
   case object CSV extends FileFormat {
     override val sparkFormatIdentifier: String = "csv"
@@ -59,8 +59,8 @@ private object FileFormat {
 
   /**
     * Avro format.
-    * @see https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-avro
-    * @see https://github.com/databricks/spark-avro
+    * @see [[https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-avro]]
+    * @see [[https://github.com/databricks/spark-avro]]
     */
   case object AVRO extends FileFormat {
     override val sparkFormatIdentifier: String = "com.databricks.spark.avro"
@@ -70,7 +70,7 @@ private object FileFormat {
 
   /**
     * Parquet format.
-    * @see https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet
+    * @see [[https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet]]
     */
   case object PARQUET extends FileFormat {
     override val sparkFormatIdentifier: String = "parquet"
