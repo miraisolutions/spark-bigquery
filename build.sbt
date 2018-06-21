@@ -29,22 +29,22 @@ resolvers += Opts.resolver.sonatypeReleases
 
 val sparkVersion = "2.3.0"
 
+val exclusions = Seq(
+  ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
+  ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark 2.2.x
+  ExclusionRule("commons-lang", "commons-lang") // clashes with Spark 2.2.x
+)
+
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
-  "com.google.cloud" % "google-cloud-bigquery" % "1.34.0",
-  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2",
+  "com.google.cloud" % "google-cloud-bigquery" % "1.34.0" excludeAll(exclusions: _*),
+  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2" excludeAll(exclusions: _*),
   "com.databricks" %% "spark-avro" % "4.0.0",
   "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
   "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion}_0.9.0" % "it,test",
   "org.apache.spark" %% "spark-hive" % sparkVersion % "it,test" // required by spark-testing-base
-)
-
-excludeDependencies ++= Seq(
-  ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
-  ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark 2.2.x
-  ExclusionRule("commons-lang", "commons-lang") // clashes with Spark 2.2.x
 )
 
 configs(IntegrationTest)
