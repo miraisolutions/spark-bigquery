@@ -62,13 +62,13 @@ object FormatConverter {
                 ),
                 false
               ),
-              listNullable,
+              false, // repeated fields are not nullable
               meta
             )
           )
         ) => // this is a field which has the typical Parquet-style array format
           val arrayType = ArrayType(elementType, elementNullable)
-          val newField = StructField(field.name, arrayType, listNullable, meta)
+          val newField = StructField(field.name, arrayType, field.nullable, meta)
           val newDf = aggDf.withColumn(field.name, parquetListToArrayUdf(arrayType)(aggDf.col(field.name)))
           (newDf, newField :: aggFields)
 

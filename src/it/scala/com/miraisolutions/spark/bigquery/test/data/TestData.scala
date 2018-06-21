@@ -25,9 +25,8 @@ import org.apache.spark.sql.types._
 
 private[bigquery] object TestData {
 
-  // Atomic types currently without BinaryType
   private val atomicTypes: Set[DataType] = Set(BooleanType, ByteType, ShortType, IntegerType, LongType, FloatType,
-    DoubleType, StringType, TimestampType, DateType, DataTypes.createDecimalType(38, 9),
+    DoubleType, StringType, BinaryType, TimestampType, DateType, DataTypes.createDecimalType(38, 9),
     DataTypes.createDecimalType(12, 4), DataTypes.createDecimalType(33, 4),
     DataTypes.createDecimalType(7,7))
 
@@ -55,7 +54,13 @@ private[bigquery] object TestData {
 
   private val arrayTypes: Set[ArrayType] = {
     for {
-      bt <- atomicTypes
+      bt <- atomicTypes.filter {
+        // TODO: We ignore arrays of decimals with precision < 38 for now since they cannot easily be cast;
+        // may use higher-order functions in the future: https://issues.apache.org/jira/browse/SPARK-19480
+        case dt: DecimalType if dt.precision < 38 => false
+        case BinaryType => false
+        case _ => true
+      }
       containsNull <- Set(true, false)
     } yield ArrayType(bt, containsNull)
   }
@@ -66,13 +71,4 @@ private[bigquery] object TestData {
       nullable <- Set(true, false)
     } yield StructField(createName(at, nullable), at, nullable)
   }
-
-/*  val arrayOfArrayFields: Set[StructField] = {
-    for {
-      af <- arrayFields
-      containsNull <- Set(true, false)
-      nullable <- Set(true, false)
-      at =
-    } yield StructField()
-  }*/
 }

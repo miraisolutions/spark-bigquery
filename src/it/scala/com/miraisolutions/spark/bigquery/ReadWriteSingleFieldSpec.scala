@@ -24,7 +24,7 @@ package com.miraisolutions.spark.bigquery
 import com.miraisolutions.spark.bigquery.test._
 import com.miraisolutions.spark.bigquery.test.data.{DataFrameGenerator, TestData}
 import com.miraisolutions.spark.bigquery.utils.FormatConverter
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, SaveMode}
 import org.scalatest.FunSuite
 import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
@@ -34,8 +34,11 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
   *
   * Data frames are written to BigQuery via Parquet export to ensure data is immediately available for querying and
   * doesn't end up in BigQuery's streaming buffer as it would when using "direct" mode.
+  *
+  * @see https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet
+  * @see https://cloud.google.com/bigquery/streaming-data-into-bigquery
   */
-class ReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with Checkers with GeneratorDrivenPropertyChecks {
+class ReadWriteSingleFieldSpec extends FunSuite with BigQueryTesting with Checkers with GeneratorDrivenPropertyChecks {
 
   override implicit val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 2, minSize = 10, sizeRange = 20)
@@ -50,9 +53,9 @@ class ReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with Check
       val schema = StructType(List(field))
       implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
 
-      forAll { df: DataFrame =>
+      forAll { out: DataFrame =>
 
-        df.write
+        out.write
           .mode(SaveMode.Overwrite)
           .bigqueryTest(testTable, exportType = "parquet")
           .save()
@@ -64,7 +67,7 @@ class ReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with Check
 
         val inTransformed = FormatConverter.parquetListsAsArrays(in)
 
-        assertDataFrameEquals(df.aligned, inTransformed.aligned)
+        assertDataFrameEquals(out.aligned, inTransformed.aligned)
       }
     }
   }

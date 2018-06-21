@@ -39,6 +39,8 @@ object DataFrameGenerator {
   // See https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
   private val MIN_INSTANT = Instant.parse("0001-01-01T00:00:00.000000Z")
   private val MAX_INSTANT = Instant.parse("9999-12-31T23:59:59.999999Z")
+  // Number of milliseconds in one day
+  private val MILLIS_PER_DAY = 86400000L
 
   /**
     * Generates an arbitrary Spark data frame with the specified schema and minimum number of partitions.
@@ -103,7 +105,7 @@ object DataFrameGenerator {
         arbitrary[String]
 
       case BinaryType =>
-        arbitrary[Array[Byte]]
+        Gen.listOf(arbitrary[Byte]).map(_.toArray)
 
       case BooleanType =>
         arbitrary[Boolean]
@@ -116,7 +118,11 @@ object DataFrameGenerator {
       case DateType =>
         // See https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
         // BigQuery allowed date range: [0001-01-1, 9999-12-31]
-        Gen.chooseNum[Long](MIN_INSTANT.toEpochMilli, MAX_INSTANT.toEpochMilli).map(new Date(_))
+        Gen.chooseNum[Long](MIN_INSTANT.toEpochMilli, MAX_INSTANT.toEpochMilli) map { millis =>
+          // We need to round the milliseconds to full days as otherwise the time components will be set to the
+          // time components in the default time zone; see javadoc for java.sql.Date for more details
+          new Date(millis / MILLIS_PER_DAY * MILLIS_PER_DAY)
+        }
 
       case arr: ArrayType =>
         val elementGenerator = getGeneratorForType(arr.elementType)
