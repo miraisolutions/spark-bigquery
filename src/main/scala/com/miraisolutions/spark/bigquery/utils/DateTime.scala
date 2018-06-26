@@ -21,6 +21,7 @@
 
 package com.miraisolutions.spark.bigquery.utils
 
+import java.util.TimeZone
 import java.sql.{Date, Timestamp}
 import java.time.{Instant, LocalDate, ZoneId}
 import java.time.format.DateTimeFormatter
@@ -31,13 +32,25 @@ private[bigquery] object DateTime {
   private val DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE.withZone(UTC)
 
   /**
-    * Converts a [[java.sql.Date]] to a string in the format 'yyyy-MM-dd'.
-    * @param date Date
+    * Formats milliseconds since the epoch in the format 'yyyy-MM-dd'.
+    * @param millis Milliseconds since the epoch
     * @return Date string of the form 'yyyy-MM-dd'
     */
-  def formatDate(date: Date): String = {
-    val instant = Instant.ofEpochMilli(date.getTime)
+  def formatMillisSinceEpoch(millis: Long): String = {
+    val instant = Instant.ofEpochMilli(millis)
     DATE_FORMATTER.format(instant)
+  }
+
+  /**
+    * Formats a [[java.sql.Date]] returned by Spark using the format 'yyyy-MM-dd'.
+    * @param date Date value from Spark
+    * @return Date string of the form 'yyyy-MM-dd'
+    * @note Spark generally seems to be using local timezone
+    * @see [[https://issues.apache.org/jira/browse/SPARK-18350]]
+    * @see [[https://groups.google.com/a/lists.datastax.com/forum/#!topic/spark-connector-user/Uv9UoFjA9SU]]
+    */
+  def formatSparkDate(date: Date): String = {
+    formatMillisSinceEpoch(date.getTime + TimeZone.getDefault.getOffset(date.getTime))
   }
 
   /**

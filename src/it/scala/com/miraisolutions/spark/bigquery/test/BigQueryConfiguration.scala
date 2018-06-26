@@ -44,7 +44,10 @@ private[bigquery] trait BigQueryConfiguration extends TestSuiteMixin { this: Tes
   import BigQueryConfiguration._
 
   // Captured BigQuery test configuration
-  var config: BigQueryConfig = _
+  private var _config: BigQueryConfig = _
+
+  /** BigQuery configuration */
+  protected def config: BigQueryConfig = _config
 
   /**
     * Construct a table reference to a table in the configured BigQuery test dataset.
@@ -52,7 +55,7 @@ private[bigquery] trait BigQueryConfiguration extends TestSuiteMixin { this: Tes
     * @return BigQuery table reference
     */
   protected def getTestDatasetTableReference(table: String): BigQueryTableReference = {
-    BigQueryTableReference(config.project, BIGQUERY_TEST_DATASET, table)
+    BigQueryTableReference(_config.project, BIGQUERY_TEST_DATASET, table)
   }
 
   /**
@@ -72,7 +75,7 @@ private[bigquery] trait BigQueryConfiguration extends TestSuiteMixin { this: Tes
       * @return Spark [[DataFrameReader]]
       */
     def bigqueryTest(table: String, importType: String = "direct"): DataFrameReader = {
-      applyDataFrameOptions(reader, config)
+      applyDataFrameOptions(reader, _config)
         .option("table", getTestDatasetTableIdentifier(table))
         .option("type", importType)
     }
@@ -86,7 +89,7 @@ private[bigquery] trait BigQueryConfiguration extends TestSuiteMixin { this: Tes
       * @return Spark [[DataFrameWriter]]
       */
     def bigqueryTest(table: String, exportType: String = "direct"): DataFrameWriter[Row] = {
-      applyDataFrameOptions(writer, config)
+      applyDataFrameOptions(writer, _config)
         .option("table", getTestDatasetTableIdentifier(table))
         .option("type", exportType)
     }
@@ -95,7 +98,7 @@ private[bigquery] trait BigQueryConfiguration extends TestSuiteMixin { this: Tes
   // See {{TestSuiteMixin}}
   abstract override def withFixture(test: NoArgTest): Outcome = {
     // Extract BigQuery configuration from config map
-    config = BigQueryConfig(test.configMap.mapValues(_.toString))
+    _config = BigQueryConfig(test.configMap.mapValues(_.toString))
     super.withFixture(test)
   }
 }

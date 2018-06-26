@@ -61,6 +61,8 @@ IntegrationTest / javaOptions ++= Seq(
 
 IntegrationTest / logBuffered := false
 
+IntegrationTest / testOptions += Tests.Argument("-oF")
+
 enablePlugins(SbtProguard)
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)

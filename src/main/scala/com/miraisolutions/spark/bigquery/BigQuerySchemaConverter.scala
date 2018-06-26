@@ -337,7 +337,7 @@ private[bigquery] object BigQuerySchemaConverter {
           DateTime.timestampToEpochSeconds(row.getTimestamp(idx))
 
         case (DateType, DATE) =>
-          DateTime.formatDate(row.getDate(idx))
+          DateTime.formatSparkDate(row.getDate(idx))
 
         case (t: MapType, RECORD) =>
           val m = row.getMap[Any, Any](idx)

@@ -23,15 +23,14 @@ package com.miraisolutions.spark.bigquery
 
 import com.miraisolutions.spark.bigquery.test._
 import com.miraisolutions.spark.bigquery.test.data.{DataFrameGenerator, TestData}
-import com.miraisolutions.spark.bigquery.utils.FormatConverter
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, SaveMode}
+import org.scalactic.anyvals.PosZInt
 import org.scalatest.FunSuite
 import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
-import FormatConverter._
 
 /**
-  * Test suite which tests reading and writing single Spark fields/columns to and from BigQuery.
+  * Test suite which tests reading and writing Spark fields/columns to and from BigQuery.
   *
   * Data frames are written to BigQuery via Parquet export to ensure data is immediately available for querying and
   * doesn't end up in BigQuery's streaming buffer as it would when using "direct" mode.
@@ -39,39 +38,51 @@ import FormatConverter._
   * @see [[https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet]]
   * @see [[https://cloud.google.com/bigquery/streaming-data-into-bigquery]]
   */
-class ReadWriteSingleFieldSpec extends FunSuite with BigQueryTesting with Checkers with GeneratorDrivenPropertyChecks {
-
-  override implicit val generatorDrivenConfig =
-    PropertyCheckConfiguration(minSuccessful = 1, minSize = 10, sizeRange = 10)
+class ParquetWriteDirectReadSpec extends FunSuite with BigQueryTesting {
 
   private val testTable = "test"
-  private val testFields = TestData.atomicFields ++ TestData.arrayFields ++ TestData.mapFields
 
-  testFields foreach { field =>
+  private class RandomDataFrame(schema: StructType, size: PosZInt)
+    extends Checkers with GeneratorDrivenPropertyChecks {
 
-    test(s"Columns of type ${field.dataType} (nullable: ${field.nullable}) " +
-      s"can be written to and read from BigQuery") {
+    override implicit val generatorDrivenConfig =
+      PropertyCheckConfiguration(minSuccessful = 1, minSize = size, sizeRange = size)
 
-      val schema = StructType(List(field))
-      implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
+    implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
 
-      forAll { out: DataFrame =>
+    forAll { out: DataFrame =>
 
-        out.write
-          .mode(SaveMode.Overwrite)
-          .bigqueryTest(testTable, exportType = "parquet")
-          .save()
+      out.write
+        .mode(SaveMode.Overwrite)
+        .bigqueryTest(testTable, exportType = "parquet")
+        .save()
 
-        val in = spark.read
-          .bigqueryTest(testTable)
-          .load()
-          .persist()
+      val in = spark.read
+        .bigqueryTest(testTable)
+        .load()
+        .persist()
 
-        val inTransformed = transform(in, List(parquetListToArray, parquetMapToMap))
-
-        assertDataFrameEquals(out.aligned, inTransformed.aligned)
-      }
+      assertDataFrameEquals(out.aligned, in.aligned)
     }
+
+  }
+
+  (TestData.atomicFields ++ TestData.arrayFields ++ TestData.mapFields) foreach { field =>
+
+    test(s"Column of type ${field.dataType} (nullable: ${field.nullable}) " +
+      s"can be written to and read from BigQuery") {
+      new RandomDataFrame(StructType(List(field)), 10)
+    }
+
+  }
+
+  test("Nested struct columns can be written to and read from BigQuery") {
+    new RandomDataFrame(StructType(List(TestData.customStructField)), 2)
+  }
+
+  test("Data frames with mixed data types can be written to and read from BigQuery") {
+    new RandomDataFrame(StructType(TestData.atomicFields ++ TestData.arrayFields.take(2) ++
+      TestData.mapFields.take(2)), 2)
   }
 
 }

@@ -25,13 +25,14 @@ import org.apache.spark.sql.types._
 
 private[bigquery] object TestData {
 
-  private val atomicTypes: List[DataType] = List(BooleanType, ByteType, ShortType, IntegerType, LongType, FloatType,
+  private val atomicTypes = List(BooleanType, ByteType, ShortType, IntegerType, LongType, FloatType,
     DoubleType, StringType, BinaryType, TimestampType, DateType, DataTypes.createDecimalType(38, 9),
     DataTypes.createDecimalType(12, 4), DataTypes.createDecimalType(33, 4),
     DataTypes.createDecimalType(7,7))
 
   private def createName(dt: DataType, nullable: Boolean): String = {
-    val base = dt.simpleString.replaceAll("[^A-Za-z]+", "")
+    dt.typeName
+    val base = dt.typeName.replaceAll("[^A-Za-z0-9]+", "")
     if(nullable) {
       base + "0"
     } else {
@@ -79,4 +80,28 @@ private[bigquery] object TestData {
   }
 
   val mapFields: List[StructField] = createFields(mapTypes, createMapName)
+
+  val customStructField: StructField = StructField(
+    "customStruct0",
+    StructType(
+      Array(
+        StructField("a", BooleanType, false),
+        StructField("b", ShortType, true),
+        StructField("c", FloatType, false),
+        StructField("d", DataTypes.createDecimalType(18, 6)),
+        StructField("e", TimestampType, true),
+        StructField("f", StringType, false),
+        StructField("g", BinaryType, true),
+        StructField("h", ArrayType(DoubleType, true)),
+        StructField("i", MapType(StringType, LongType, false)),
+        StructField("j", StructType(List(
+          StructField("k", DateType, false),
+          StructField("l", ByteType, true),
+          StructField("m", ArrayType(IntegerType, false), true),
+          StructField("n", MapType(BinaryType, ByteType, true), true)
+        )), true)
+      )
+    ),
+    true
+  )
 }
