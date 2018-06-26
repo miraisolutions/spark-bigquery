@@ -71,11 +71,23 @@ private object FileFormat {
   /**
     * Parquet format.
     * @see [[https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet]]
+    * @see [[https://spark.apache.org/docs/latest/sql-programming-guide.html#parquet-files]]
     */
   case object PARQUET extends FileFormat {
     override val sparkFormatIdentifier: String = "parquet"
-    override val bigQueryFormatOptions: FormatOptions = FormatOptions.of("PARQUET") // FormatOptions.parquet()
+    override val bigQueryFormatOptions: FormatOptions = FormatOptions.parquet()
     override val fileExtension: String = "parquet"
+  }
+
+  /**
+    * ORC format.
+    * @see [[https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-orc]]
+    * @see [[https://spark.apache.org/docs/latest/sql-programming-guide.html#orc-files]]
+    */
+  case object ORC extends FileFormat {
+    override val sparkFormatIdentifier: String = "orc"
+    override val bigQueryFormatOptions: FormatOptions = FormatOptions.orc()
+    override val fileExtension: String = "orc"
   }
 
   /** Creates a file format from a string. */
@@ -83,6 +95,7 @@ private object FileFormat {
     format.toLowerCase match {
       case "parquet" => PARQUET
       case "avro" => AVRO
+      case "orc" => ORC
       case "json" => JSON
       case "csv" => CSV
       case _ =>

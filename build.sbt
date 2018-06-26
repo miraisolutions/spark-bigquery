@@ -39,7 +39,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
-  "com.google.cloud" % "google-cloud-bigquery" % "1.34.0" excludeAll(exclusions: _*),
+  "com.google.cloud" % "google-cloud-bigquery" % "1.35.0" excludeAll(exclusions: _*),
   "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2" excludeAll(exclusions: _*),
   "com.databricks" %% "spark-avro" % "4.0.0",
   "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
