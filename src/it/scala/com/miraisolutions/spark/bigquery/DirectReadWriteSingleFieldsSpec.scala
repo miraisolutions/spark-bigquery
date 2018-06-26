@@ -53,16 +53,24 @@ class DirectReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with
 
       val schema = StructType(List(field))
       implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
+      val tableName = testTable + "_" + System.currentTimeMillis().toString
 
       forAll { df: DataFrame =>
         df.write
           .mode(SaveMode.Overwrite)
-          .bigqueryTest(testTable)
+          .bigqueryTest(tableName)
           .save()
 
-        val schema = bigQueryClient.getSchema(getTestDatasetTableReference(testTable))
+        val in = spark.read
+          .bigqueryTest(tableName)
+          .load()
+          .persist()
 
-        assert(df.schema, schema)
+        val tableReference = getTestDatasetTableReference(tableName)
+
+        assert(df.aligned.schema, in.aligned.schema)
+        val deleted = bigQueryClient.getTable(tableReference, 1).table.delete()
+        assert(deleted, true)
       }
     }
   }
