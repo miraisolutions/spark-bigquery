@@ -118,10 +118,12 @@ package object test {
       */
     def aligned: DataFrame = {
       import Parquet._
+      import Generic._
+
       var df: DataFrame = dataFrame
 
       do {
-        df = FormatConverter.transform(df, List(parquetListToArray, parquetMapToMap))
+        df = FormatConverter.transform(df, List(parquetListToArray, parquetMapToMap, keyValueRecordToMap))
         df = df.schema.fields.foldLeft(df) { case (agg, field) =>
           if(nestedTypeFlattener.isDefinedAt(field)) {
             val (_, converter) = nestedTypeFlattener(field)

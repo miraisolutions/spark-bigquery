@@ -23,6 +23,9 @@ package com.miraisolutions.spark.bigquery.test.data
 
 import org.apache.spark.sql.types._
 
+/**
+  * Definition of Spark data frame test data types and fields.
+  */
 private[bigquery] object TestData {
 
   private val atomicTypes = List(BooleanType, ByteType, ShortType, IntegerType, LongType, FloatType,
@@ -75,7 +78,7 @@ private[bigquery] object TestData {
     for {
       keyType <- atomicTypes
       valueType <- atomicTypes
-      valueContainsNull <- Set(true, false)
+      valueContainsNull <- List(true, false)
     } yield MapType(keyType, valueType, valueContainsNull)
   }
 

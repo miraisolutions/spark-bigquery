@@ -30,9 +30,9 @@ resolvers += Opts.resolver.sonatypeReleases
 val sparkVersion = "2.3.0"
 
 val exclusions = Seq(
-  ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
-  ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark 2.2.x
-  ExclusionRule("commons-lang", "commons-lang") // clashes with Spark 2.2.x
+  ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark
+  ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark
+  ExclusionRule("commons-lang", "commons-lang") // clashes with Spark
 )
 
 libraryDependencies ++= Seq(

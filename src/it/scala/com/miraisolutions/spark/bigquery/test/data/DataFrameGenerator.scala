@@ -32,13 +32,15 @@ import org.scalacheck.{Arbitrary, Gen}
 
 /**
   * Generator of arbitrary Spark data frames used in property-based testing.
+  *
+  * @see [[https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types]]
   */
 private[bigquery] object DataFrameGenerator {
 
   // Min and max BigQuery timestamp and date values
-  // See https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
   private val MIN_INSTANT = Instant.parse("0001-01-01T00:00:00.000000Z")
   private val MAX_INSTANT = Instant.parse("9999-12-31T23:59:59.999999Z")
+
   // Number of milliseconds in one day
   private val MILLIS_PER_DAY = 86400000L
 
@@ -111,12 +113,10 @@ private[bigquery] object DataFrameGenerator {
         arbitrary[Boolean]
 
       case TimestampType =>
-        // See https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
         // BigQuery allowed timestamp range: [0001-01-1 00:00:00.000000, 9999-12-31 23:59:59.999999]
         Gen.chooseNum[Long](MIN_INSTANT.toEpochMilli, MAX_INSTANT.toEpochMilli).map(new Timestamp(_))
 
       case DateType =>
-        // See https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
         // BigQuery allowed date range: [0001-01-1, 9999-12-31]
         Gen.chooseNum[Long](MIN_INSTANT.toEpochMilli, MAX_INSTANT.toEpochMilli) map { millis =>
           // We need to round the milliseconds to full days as otherwise the time components will be set to the

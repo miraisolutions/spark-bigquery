@@ -33,18 +33,25 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
   * Test suite which tests reading and writing single Spark fields/columns to and from BigQuery.
   *
   * Data frames are written to BigQuery via "direct" export. Because attempts to query the new fields might require
-  * a waiting time of up to 90 minutes (https://cloud.google.com/bigquery/streaming-data-into-bigquery), this test suite
-  * only verifies the correctness of the generated BigQuery schema.
+  * a waiting time of up to 90 minutes (https://cloud.google.com/bigquery/streaming-data-into-bigquery), this test
+  * suite only verifies the correctness of the generated BigQuery schema.
+  *
+  * BigQuery's streaming system caches table schemas for up to two minutes. That also seems to be the case when a
+  * table gets deleted. For this reason, this test suite generates unique table names for each test case and then
+  * manually deletes the table afterwards.
+  *
+  * @see [[https://cloud.google.com/bigquery/streaming-data-into-bigquery]]
+  * @see [[https://stackoverflow.com/q/25279116]]
   */
-class DirectReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with Checkers
+class DirectWriteAndReadSpec extends FunSuite with BigQueryTesting with Checkers
   with GeneratorDrivenPropertyChecks {
 
   override implicit val generatorDrivenConfig =
-    PropertyCheckConfiguration(minSuccessful = 2, minSize = 10, sizeRange = 20)
+    PropertyCheckConfiguration(minSuccessful = 1, minSize = 10, sizeRange = 10)
 
   private val bigQueryClient = new BigQueryClient(config)
-  private val testTable = "direct_test"
-  private val testFields = TestData.atomicFields ++ TestData.arrayFields
+  private val testTablePrefix = "direct_test"
+  private val testFields = TestData.atomicFields ++ TestData.arrayFields ++ TestData.mapFields
 
   testFields foreach { field =>
 
@@ -53,7 +60,7 @@ class DirectReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with
 
       val schema = StructType(List(field))
       implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
-      val tableName = testTable + "_" + System.currentTimeMillis().toString
+      val tableName = testTablePrefix + "_" + System.currentTimeMillis().toString
 
       forAll { df: DataFrame =>
         df.write
@@ -69,7 +76,7 @@ class DirectReadWriteSingleFieldsSpec extends FunSuite with BigQueryTesting with
         val tableReference = getTestDatasetTableReference(tableName)
 
         assert(df.aligned.schema, in.aligned.schema)
-        val deleted = bigQueryClient.getTable(tableReference, 1).table.delete()
+        val deleted = bigQueryClient.deleteTable(tableReference)
         assert(deleted, true)
       }
     }

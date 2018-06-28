@@ -39,12 +39,11 @@ import scala.language.postfixOps
   */
 private[bigquery] object BigQuerySchemaConverter {
 
-  // BigQuery's NUMERIC is a Decimal with precision 38 and scale 9;
-  // See https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
+  // BigQuery's NUMERIC is a Decimal with precision 38 and scale 9
   private[bigquery] val BIGQUERY_NUMERIC_DECIMAL = DataTypes.createDecimalType(38, 9)
 
-  private val KEY_FIELD_NAME = "key"
-  private val VALUE_FIELD_NAME = "value"
+  private[bigquery] val KEY_FIELD_NAME = "key"
+  private[bigquery] val VALUE_FIELD_NAME = "value"
 
   /**
     * Converts a BigQuery schema to a Spark schema.
@@ -310,10 +309,7 @@ private[bigquery] object BigQuerySchemaConverter {
         case (DoubleType, FLOAT) =>
           row.getDouble(idx)
 
-        case (_: DecimalType, NUMERIC) =>
-          row.getDecimal(idx)
-
-        case (_: DecimalType, STRING) =>
+        case (_: DecimalType, _) =>
           row.getDecimal(idx).toPlainString
 
         case (StringType, STRING) =>
@@ -341,23 +337,27 @@ private[bigquery] object BigQuerySchemaConverter {
 
         case (t: MapType, RECORD) =>
           val m = row.getMap[Any, Any](idx)
-          val result = new java.util.HashMap[Any, Any](m.size)
 
           val (keyField, valueField) = customKeyValueStructFields(t)
           val mapSchema = StructType(Array(keyField, valueField))
 
-          m foreach { kv =>
-            val kvRow = new GenericRowWithSchema(kv.productIterator.toArray, mapSchema)
+          m.toList map { case (k, v) =>
+            val record = new java.util.HashMap[Any, Any](2)
+            val kvRow = new GenericRowWithSchema(Array(k, v), mapSchema)
             val keyValue = getFieldValue(kvRow, field.getSubFields.get(0))
             val valueValue = getFieldValue(kvRow, field.getSubFields.get(1))
-            result.put(keyValue, valueValue)
-          }
-          result
+            record.put(keyField.name, keyValue)
+            record.put(valueField.name, valueValue)
+            record
+          } asJava
 
         case (st: ArrayType, _) =>
-          val arraySchema = StructType(Array(customArrayStructField(st)))
+          val arrayField = customArrayStructField(st)
+          val arraySchema = StructType(Array(arrayField))
+          val arrayBigQueryField = sparkToBigQueryField(arrayField)
+
           row.getSeq[Any](idx) map { value =>
-            getFieldValue(new GenericRowWithSchema(Array(value), arraySchema), field)
+            getFieldValue(new GenericRowWithSchema(Array(value), arraySchema), arrayBigQueryField)
           } asJava
       }
     }

@@ -39,11 +39,9 @@ private[bigquery] trait BigQueryTesting extends BigQueryConfiguration with DataF
     val mismatch = compareRDD(expected.rdd, result.rdd)
     if(mismatch.isDefined) {
       println("#### Expected ####")
-      expected.show(10, false)
-      // expected.show(10, 100, true)
+      expected.show(10, 100, true)
       println("#### Result ####")
-      result.show(10, false)
-      // result.show(10, 100, true)
+      result.show(10, 100, true)
     }
 
     assertTrue(mismatch.isEmpty)

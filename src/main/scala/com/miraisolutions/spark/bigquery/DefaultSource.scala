@@ -182,8 +182,7 @@ private[bigquery] object DefaultSource {
       * @param direct Block to execute when 'type' = 'direct'
       * @param handleFileFormat Function to execute when 'type' = <supported format>
       */
-    def foldType[T](direct: => T)
-                   (handleFileFormat: FileFormat => T): T = {
+    def foldType[T](direct: => T)(handleFileFormat: FileFormat => T): T = {
       parameters.getOrElse("type", TYPE_DIRECT) match {
         case TYPE_DIRECT =>
           direct

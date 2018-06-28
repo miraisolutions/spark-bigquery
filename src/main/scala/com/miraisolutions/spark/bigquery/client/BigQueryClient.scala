@@ -140,6 +140,15 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
   }
 
   /**
+    * Deletes a BigQuery table.
+    * @param table BigQuery table reference
+    * @return True if the table was deleted and false if the table was not found
+    */
+  def deleteTable(table: BigQueryTableReference): Boolean = {
+    bigquery.getTable(table).delete()
+  }
+
+  /**
     * Executes a BigQuery standard SQL query and returns a BigQuery table reader to retrieve the results.
     * @param query BigQuery standard SQL (SQL-2011) query
     * @param numPartitions Number of target partitions
