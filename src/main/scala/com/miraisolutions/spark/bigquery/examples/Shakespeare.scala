@@ -21,7 +21,7 @@
 
 package com.miraisolutions.spark.bigquery.examples
 
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{SaveMode, SparkSession}
 import com.miraisolutions.spark.bigquery.config._
 
 /**
@@ -89,6 +89,7 @@ object Shakespeare {
       .bigquery(config)
       .option("table", args(0) + ".samples.macbeth")
       .option("type", "parquet")
+      .mode(SaveMode.Overwrite)
       .save()
   }
 }
