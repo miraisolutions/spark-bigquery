@@ -1,4 +1,4 @@
-# spark-bigquery
+# spark-bigquery: A BigQuery Data Source for Apache Spark
 
 This project provides a [Google BigQuery](https://cloud.google.com/bigquery/) data source (`com.miraisolutions.spark.bigquery.DefaultSource`) to Spark using the new [Google Cloud client libraries](https://cloud.google.com/bigquery/docs/reference/libraries) for the Google BigQuery API. It supports "direct" import/export where records are directly streamed from/to BigQuery. In addition, data may be imported/exported via intermediate data extracts on [Google Cloud Storage](https://cloud.google.com/storage/) (GCS). Note that when using "direct" (streaming) export, data may not be immediately available for further querying/processing in BigQuery. It may take several minutes for streamed records to become "available". See the following resources for more information:
 
