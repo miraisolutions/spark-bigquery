@@ -168,7 +168,7 @@ private[bigquery] object DefaultSource {
     val client = getBigQueryClient(parameters)
 
     initHadoop(sqlContext.sparkContext.hadoopConfiguration, client.config.project,
-      client.config.stagingDataset.serviceAccountKeyFile)
+      client.config.serviceAccountKeyFile)
 
     val tableReference = getBigQueryTableReference(sqlContext, client, parameters, tableOnly)
 

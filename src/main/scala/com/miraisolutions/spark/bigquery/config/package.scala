@@ -46,8 +46,8 @@ package object config {
         .option(StagingDatasetConfig.Keys.GCS_BUCKET, stagingDataset.gcsBucket)
         .option(JobConfig.Keys.PRIORITY, job.priority.toString)
 
-    stagingDataset.serviceAccountKeyFile.fold(objWithOptions) { file =>
-      objWithOptions.option(StagingDatasetConfig.Keys.SERVICE_ACCOUNT_KEY_FILE, file)
+    serviceAccountKeyFile.fold(objWithOptions) { file =>
+      objWithOptions.option(BigQueryConfig.Keys.SERVICE_ACCOUNT_KEY_FILE, file)
     }
   }
 

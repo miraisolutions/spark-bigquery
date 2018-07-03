@@ -41,8 +41,8 @@ import com.miraisolutions.spark.bigquery.config._
   * Where `<arguments>` are:
   *  1. Google BigQuery billing project ID
   *  1. Google BigQuery dataset location (EU, US)
-  *  1. Google Cloud Storage (GCS) bucket where staging files will be located
   *  1. Google Cloud service account key file
+  *  1. Google Cloud Storage (GCS) bucket where staging files will be located
   *
   * @see [[https://cloud.google.com/bigquery/public-data/]]
   * @see [[https://cloud.google.com/bigquery/docs/dataset-locations]]
@@ -64,9 +64,9 @@ object Shakespeare {
     val config = BigQueryConfig(
       project = args(0), // Google BigQuery billing project ID
       location = args(1), // Google BigQuery dataset location
+      serviceAccountKeyFile = Some(args(2)), // Google Cloud service account key file
       stagingDataset = StagingDatasetConfig(
-        gcsBucket = args(2), // Google Cloud Storage bucket for staging files
-        serviceAccountKeyFile = Some(args(3)) // Google Cloud service account key file
+        gcsBucket = args(3) // Google Cloud Storage bucket for staging files
       )
     )
 

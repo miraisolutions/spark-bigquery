@@ -32,7 +32,6 @@ private[bigquery] object StagingDatasetConfig {
     val NAME = namespace + "name"
     val LIFETIME = namespace + "lifetime"
     val GCS_BUCKET = namespace + "gcs_bucket"
-    val SERVICE_ACCOUNT_KEY_FILE = namespace + "service_account_key_file"
   }
 
   object Defaults {
@@ -48,16 +47,12 @@ private[bigquery] object StagingDatasetConfig {
   *                 been reached.
   * @param gcsBucket Google Cloud Storage (GCS) bucket to use for storing temporary files. Temporary files are used
   *                  when importing through BigQuery load jobs and exporting through BigQuery extraction jobs.
-  * @param serviceAccountKeyFile Optional Google Cloud service account key file to use for authentication with
-  *                              Google Cloud Storage. The use of service accounts is highly recommended.
   * @see [[https://cloud.google.com/bigquery/docs/dataset-locations]]
-  * @see [[https://cloud.google.com/storage/docs/authentication#service_accounts]]
   */
 case class StagingDatasetConfig(
   name: String = StagingDatasetConfig.Defaults.NAME,
   lifetime: Long = StagingDatasetConfig.Defaults.LIFETIME,
-  gcsBucket: String,
-  serviceAccountKeyFile: Option[String] = None
+  gcsBucket: String
 )
 
 
@@ -95,6 +90,7 @@ private[bigquery] object BigQueryConfig {
   object Keys {
     val PROJECT = namespace + "project"
     val LOCATION = namespace + "location"
+    val SERVICE_ACCOUNT_KEY_FILE = namespace + "service_account_key_file"
   }
 
   /**
@@ -104,13 +100,13 @@ private[bigquery] object BigQueryConfig {
   def apply(parameters: Map[String, String]): BigQueryConfig = {
     val project = parameters(Keys.PROJECT)
     val location = parameters(Keys.LOCATION)
+    val serviceAccountKeyFile = parameters.get(Keys.SERVICE_ACCOUNT_KEY_FILE)
 
     val stagingDataset = StagingDatasetConfig(
       name = parameters.getOrElse(StagingDatasetConfig.Keys.NAME, StagingDatasetConfig.Defaults.NAME),
       lifetime = parameters.get(StagingDatasetConfig.Keys.LIFETIME).map(_.toLong)
         .getOrElse(StagingDatasetConfig.Defaults.LIFETIME),
-      gcsBucket = parameters(StagingDatasetConfig.Keys.GCS_BUCKET),
-      serviceAccountKeyFile = parameters.get(StagingDatasetConfig.Keys.SERVICE_ACCOUNT_KEY_FILE)
+      gcsBucket = parameters(StagingDatasetConfig.Keys.GCS_BUCKET)
     )
 
     val job = JobConfig(
@@ -118,24 +114,33 @@ private[bigquery] object BigQueryConfig {
       timeout = parameters.get(JobConfig.Keys.TIMEOUT).map(_.toLong).getOrElse(JobConfig.Defaults.TIMEOUT)
     )
 
-    BigQueryConfig(project, location , stagingDataset, job)
+    BigQueryConfig(project, location , serviceAccountKeyFile, stagingDataset, job)
   }
 }
 
 /**
   * BigQuery configuration.
-  * @param project BigQuery billing project ID.
-  * @param location Geographic location where newly created datasets should reside. "EU" or "US".
-  *                 This holds for new datasets that are being created as part of a Spark write operation and for
-  *                 temporary staging datasets.
-  * @param stagingDataset BigQuery staging dataset configuration options.
-  * @param job BigQuery job configuration options.
+  *
+  * @param project               BigQuery billing project ID.
+  * @param location              Geographic location where newly created datasets should reside. "EU" or "US".
+  *                              This holds for new datasets that are being created as part of a Spark write operation
+  *                              and for temporary staging datasets.
+  * @param serviceAccountKeyFile Optional Google Cloud service account key file to use for authentication with Google
+  *                              Cloud services. The use of service accounts is highly recommended. Specifically, the
+  *                              service account will be used to interact with BigQuery and Google Cloud Storage (GCS).
+  *                              If not specified, application default credentials will be used.
+  * @param stagingDataset        BigQuery staging dataset configuration options.
+  * @param job                   BigQuery job configuration options.
   * @see [[https://cloud.google.com/bigquery/pricing]]
   * @see [[https://cloud.google.com/bigquery/docs/dataset-locations]]
+  * @see [[https://cloud.google.com/docs/authentication/]]
+  * @see [[https://cloud.google.com/bigquery/docs/authentication/]]
+  * @see [[https://cloud.google.com/storage/docs/authentication/]]
   */
 case class BigQueryConfig(
   project: String,
   location: String,
+  serviceAccountKeyFile: Option[String] = None,
   stagingDataset: StagingDatasetConfig,
   job: JobConfig = JobConfig()
 )

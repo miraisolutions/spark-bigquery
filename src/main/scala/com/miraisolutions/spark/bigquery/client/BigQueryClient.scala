@@ -21,9 +21,11 @@
 
 package com.miraisolutions.spark.bigquery.client
 
+import java.io.FileInputStream
 import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 
+import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.cloud.RetryOption
 import com.google.cloud.bigquery.BigQuery.DatasetDeleteOption
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert
@@ -59,11 +61,28 @@ private object BigQueryClient {
 private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
   import BigQueryClient._
 
-  // Google BigQuery client using application default credentials
-  private val bigquery: BigQuery = BigQueryOptions.getDefaultInstance.getService
+  // Internal BigQuery client
+  private val bigquery: BigQuery = getBigQueryService()
 
   private val logger = LoggerFactory.getLogger(classOf[BigQueryClient])
   private val sqlLogger = SqlLogger(logger)
+
+  /**
+    * Creates an internal BigQuery client that uses the provided service account credentials or the application
+    * default credentials if no service account credentials have been provided.
+    * @return BigQuery service interface
+    * @see [[https://cloud.google.com/docs/authentication/]]
+    * @see [[https://cloud.google.com/bigquery/docs/authentication/]]
+    * @see [[https://github.com/GoogleCloudPlatform/google-cloud-java#authentication]]
+    */
+  private def getBigQueryService(): BigQuery = {
+    config.serviceAccountKeyFile.fold(BigQueryOptions.getDefaultInstance.getService) { keyFile =>
+      BigQueryOptions.newBuilder()
+        .setCredentials(ServiceAccountCredentials.fromStream(new FileInputStream(keyFile)))
+        .build()
+        .getService
+    }
+  }
 
   /**
     * Retrieves a dataset or creates it if it doesn't exist.
