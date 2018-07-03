@@ -24,6 +24,7 @@ package com.miraisolutions.spark.bigquery
 import com.miraisolutions.spark.bigquery.client.BigQueryClient
 import com.miraisolutions.spark.bigquery.config.BigQueryConfig
 import com.miraisolutions.spark.bigquery.exception.MissingParameterException
+import com.miraisolutions.spark.bigquery.utils.Files
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.sql.execution.datasources.DataSource
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
@@ -44,6 +45,9 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
     withBigQueryClient(sqlContext, parameters, false) { (client, table) =>
       parameters.foldType[BaseRelation](BigQueryTableRelation(sqlContext, client, table)) { format =>
         val stagingDirectory = client.exportTable(table, format)
+        // Register staging directory for deletion when FileSystem gets closed
+        Files.deleteOnExit(stagingDirectory, sqlContext.sparkContext.hadoopConfiguration)
+
         getStagingDataFileRelation(sqlContext, stagingDirectory, format)
       }
     }
@@ -65,6 +69,9 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
           .save(stagingDirectory)
 
         client.importTable(stagingDirectory, format, table, mode)
+
+        // Remove staging directory after import has been completed
+        Files.delete(stagingDirectory, sqlContext.sparkContext.hadoopConfiguration)
       }
 
       BigQueryTableRelation(sqlContext, client, table)

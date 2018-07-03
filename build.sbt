@@ -69,6 +69,7 @@ assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeSca
 
 // Shade google dependencies due to version mismatches with dependencies deployed on Google Dataproc
 assemblyShadeRules in assembly := Seq(
+  ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
   ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
 )
 
@@ -116,6 +117,7 @@ proguardOptions in Proguard ++=
     "-keep class org.apache.avro.** { *; }",
     "-keep class com.databricks.spark.avro.** { *; }",
     "-keep class shadegoogle.cloud.** { *; }",
+    "-keep class com.google.cloud.hadoop.fs.** { *; }",
     "-keep class shadegoogle.common.** { *; }",
     "-keep class shadegoogle.auth.** { *; }",
     "-keep class com.miraisolutions.spark.bigquery.** { *; }"
