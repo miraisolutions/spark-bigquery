@@ -25,6 +25,7 @@ import com.miraisolutions.spark.bigquery.test._
 import com.miraisolutions.spark.bigquery.test.data.{DataFrameGenerator, TestData}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, SaveMode}
+import org.scalactic.anyvals.PosZInt
 import org.scalatest.FunSuite
 import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
 
@@ -45,40 +46,53 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
 class DirectWriteAndReadSpec extends FunSuite with BigQueryTesting with Checkers
   with GeneratorDrivenPropertyChecks {
 
-  override implicit val generatorDrivenConfig =
-    PropertyCheckConfiguration(minSuccessful = 1, minSize = 10, sizeRange = 10)
-
   private val testTablePrefix = "direct_test"
-  private val testFields =
-    TestData.atomicFields ++ TestData.arrayFields ++ TestData.mapFields ++ List(TestData.customStructField)
 
-  testFields foreach { field =>
+  private class RandomDataFrame(schema: StructType, size: PosZInt)
+    extends Checkers with GeneratorDrivenPropertyChecks {
 
-    test(s"Columns of type ${field.dataType} (nullable: ${field.nullable}) " +
-      "can be written to and read from BigQuery using \"direct\" imports (streaming)") {
+    override implicit val generatorDrivenConfig =
+      PropertyCheckConfiguration(minSuccessful = 1, minSize = size, sizeRange = size)
 
-      val schema = StructType(List(field))
-      implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
-      // Use unique table name to avoid BigQuery schema caching issues
-      val tableName = testTablePrefix + "_" + System.currentTimeMillis().toString
+    implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
+    // Use unique table name to avoid BigQuery schema caching issues
+    val tableName = testTablePrefix + "_" + System.currentTimeMillis().toString
 
-      forAll { df: DataFrame =>
-        df.write
-          .mode(SaveMode.Overwrite)
-          .bigqueryTest(tableName)
-          .save()
+    forAll { df: DataFrame =>
+      df.write
+        .mode(SaveMode.Overwrite)
+        .bigqueryTest(tableName)
+        .save()
 
-        val in = spark.read
-          .bigqueryTest(tableName)
-          .load()
-          .persist()
+      val in = spark.read
+        .bigqueryTest(tableName)
+        .load()
+        .persist()
 
-        val tableReference = getTestDatasetTableReference(tableName)
+      val tableReference = getTestDatasetTableReference(tableName)
 
-        assert(df.aligned.schema, in.aligned.schema)
-        val deleted = bigQueryClient.deleteTable(tableReference)
-        assert(deleted, true)
-      }
+      assert(df.aligned.schema, in.aligned.schema)
+      val deleted = bigQueryClient.deleteTable(tableReference)
+      assert(deleted, true)
+     }
+  }
+
+
+  (TestData.atomicFields ++ TestData.arrayFields ++ TestData.mapFields) foreach { field =>
+
+    test(s"Column of type ${field.dataType} (nullable: ${field.nullable}) " +
+      s"can be written to and read from BigQuery using direct imports (streaming)") {
+      new RandomDataFrame(StructType(List(field)), 10)
     }
+
+  }
+
+  test("Nested struct columns can be written to and read from BigQuery using direct imports (streaming)") {
+    new RandomDataFrame(StructType(List(TestData.customStructField)), 2)
+  }
+
+  test("Data frames with mixed data types can be written to and read from BigQuery using direct imports (streaming)") {
+    new RandomDataFrame(StructType(TestData.atomicFields ++ TestData.arrayFields.take(2) ++
+      TestData.mapFields.take(2)), 2)
   }
 }
