@@ -19,22 +19,31 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery.sql
+package com.miraisolutions.spark.bigquery.test
 
-import org.apache.spark.sql.jdbc.JdbcDialect
+import com.holdenkarau.spark.testing.{DataFrameSuiteBase, RDDComparisons}
+import org.apache.spark.sql.DataFrame
+import org.scalatest.TestSuite
 
-/**
-  * Google BigQuery standard SQL dialect (SQL-2011)
-  *
-  * @see [[https://cloud.google.com/bigquery/docs/reference/standard-sql/]]
-  */
-private case object BigQueryDialect extends JdbcDialect {
+private[bigquery] trait BigQueryTesting extends BigQueryConfiguration with DataFrameSuiteBase
+  with RDDComparisons { this: TestSuite =>
 
-  override def canHandle(url: String): Boolean = false
+  // See https://github.com/holdenk/spark-testing-base/issues/148
+  // See https://issues.apache.org/jira/browse/SPARK-22918
+  System.setSecurityManager(null)
 
-  override def quoteIdentifier(colName: String): String = s"`$colName`"
+  override def assertDataFrameEquals(expected: DataFrame, result: DataFrame): Unit = {
+    assert("Schemas don't match", expected.schema, result.schema)
+    assert("Number of rows don't match", expected.count(), result.count())
 
-  override def getTableExistsQuery(table: String): String = s"SELECT 1 FROM $table LIMIT 1"
+    val mismatch = compareRDD(expected.rdd, result.rdd)
+    if(mismatch.isDefined) {
+      println("#### Expected ####")
+      expected.show(10, 100, true)
+      println("#### Result ####")
+      result.show(10, 100, true)
+    }
 
-  override def getSchemaQuery(table: String): String = s"SELECT * FROM $table LIMIT 1"
+    assertTrue(mismatch.isEmpty)
+  }
 }

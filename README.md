@@ -1,6 +1,28 @@
-# spark-bigquery
+# spark-bigquery: A BigQuery Data Source for Apache Spark
 
-This project provides a Google BigQuery data source (`com.miraisolutions.spark.bigquery.DefaultSource`) to Spark on top of [Spotify's spark-bigquery library](https://github.com/spotify/spark-bigquery).
+This project provides a [Google BigQuery](https://cloud.google.com/bigquery/) data source (`com.miraisolutions.spark.bigquery.DefaultSource`) to Spark using the new [Google Cloud client libraries](https://cloud.google.com/bigquery/docs/reference/libraries) for the Google BigQuery API. It supports "direct" import/export where records are directly streamed from/to BigQuery. In addition, data may be imported/exported via intermediate data extracts on [Google Cloud Storage](https://cloud.google.com/storage/) (GCS). Note that when using "direct" (streaming) export, data may not be immediately available for further querying/processing in BigQuery. It may take several minutes for streamed records to become "available". See the following resources for more information:
+
+* https://cloud.google.com/bigquery/streaming-data-into-bigquery
+* https://cloud.google.com/blog/big-data/2017/06/life-of-a-bigquery-streaming-insert
+
+The following import/export combinations are currently supported:
+
+|                   | Direct             | Parquet            | Avro               | ORC                | JSON               | CSV                |
+| ----------------- | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ |
+| Import to Spark   | :heavy_check_mark: | :x:                | :heavy_check_mark: | :x:                | :heavy_check_mark: | :heavy_check_mark: |
+| Export from Spark | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :x:                | :x:                |
+
+
+More information on the various supported formats can be found at:
+
+* Parquet: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet
+* Avro: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-avro
+* ORC: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-orc
+* JSON: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json
+* CSV: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv
+
+CSV and JSON are not recommended as data exchange formats between Spark and BigQuery due to their lack of type safety. Better options are direct import/export, Parquet, Avro and ORC.
+
 
 This data source is used in the [sparkbq](https://github.com/miraisolutions/sparkbq) R package.
 
@@ -16,42 +38,78 @@ The following table provides an overview over supported versions of Spark, Scala
 
 | spark-bigquery | Spark | Scala | Google Dataproc |
 | :-----: | ----- | ----- | --------------- |
-| 0.1.x | 2.2 | 2.11 | 1.2 |
+| 0.1.x | 2.3.x | 2.11 | 1.3 |
 
 ## Example
 
 The provided Google BigQuery data source (`com.miraisolutions.spark.bigquery.DefaultSource`) can be used as follows:
 
 ``` scala
-val shakespeare = spark.read
-  .format("bigquery")
-  .option("bq.project.id", "<your_billing_project_id>")
-  .option("bq.gcs.bucket", "<your_gcs_bucket>")
-  .option("table", "bigquery-public-data:samples.shakespeare")
-  .load()
+import org.apache.spark.sql.{SaveMode, SparkSession}
+import com.miraisolutions.spark.bigquery.config._
+
+// Initialize Spark session
+val spark = SparkSession
+  .builder
+  .appName("Google BigQuery Shakespeare")
+  .getOrCreate
 
 import spark.implicits._
+
+// Define BigQuery options
+val config = BigQueryConfig(
+  project = "<billing_project_id>",  // Google BigQuery billing project ID
+  location = "<dataset_location>", // Google BigQuery dataset location
+  stagingDataset = StagingDatasetConfig(
+	gcsBucket = "<gcs_bucket>" // Google Cloud Storage bucket for staging files
+  ),
+  serviceAccountKeyFile = Some("<service_account_key_file>") // Google Cloud service account key file
+)
+
+// Read public shakespeare data table using direct import (streaming)
+val shakespeare = spark.read
+  .bigquery(config)
+  .option("table", "bigquery-public-data.samples.shakespeare")
+  .option("type", "direct")
+  .load()
 
 val hamlet = shakespeare.filter($"corpus".like("hamlet"))
 hamlet.show(100)
 
 shakespeare.createOrReplaceTempView("shakespeare")
-val macbeth = spark.sql("SELECT * FROM shakespeare WHERE corpus = 'macbeth'")
+val macbeth = spark.sql("SELECT * FROM shakespeare WHERE corpus = 'macbeth'").persist()
 macbeth.show(100)
+
+// Write filtered data table via a Parquet export on GCS
+macbeth.write
+  .bigquery(config)
+  .option("table", "<billing_project_id>.samples.macbeth")
+  .option("type", "parquet")
+  .mode(SaveMode.Overwrite)
+  .save()
 ```
 
 You can find a complete example at `com.miraisolutions.spark.bigquery.examples.Shakespeare`.
 
-To run this example on Google Dataproc (assuming you have the [Google Cloud SDK](https://cloud.google.com/sdk/) installed):
-1. Build an assembly using `sbt clean compile assembly`
-2. `gcloud dataproc jobs submit spark --cluster <your_cluster_name> --class com.miraisolutions.spark.bigquery.examples.Shakespeare --jars target/scala-2.11/spark-bigquery-assembly-<version>.jar -- <your_billing_project_id> <your_gcs_bucket>`
+To run this example first compile and assembly using `sbt assembly`. Then run:
 
-If you are running on a Spark cluster outside of the Google Cloud, you may need to set [Google application default credentials](https://developers.google.com/identity/protocols/application-default-credentials) or relevant Spark/Hadoop configuration options. The following is an example using a local Spark cluster:
+**Local Spark Cluster**
 
-```
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/gcp_json_keyfile.json
-spark-submit --class com.miraisolutions.spark.bigquery.examples.Shakespeare --master local[2] --conf spark.hadoop.google.cloud.auth.service.account.json.keyfile="/path/to/your/gcp_json_keyfile.json" target/scala-2.11/spark-bigquery-assembly-<version>.jar <your_billing_project_id> <your_gcs_bucket>
-```
+`spark-submit --class com.miraisolutions.spark.bigquery.examples.Shakespeare --master local[*] target/scala-2.11/spark-bigquery-assembly-<version>.jar <arguments>`
+
+**[Google Cloud Dataproc](https://cloud.google.com/dataproc/)**
+
+`gcloud dataproc jobs submit spark --cluster <cluster> --class com.miraisolutions.spark.bigquery.examples.Shakespeare --jars target/scala-2.11/spark-bigquery-assembly-<version>.jar -- <argument>`
+
+where `<arguments>` are:
+1. Google BigQuery billing project ID
+2. Google BigQuery dataset location (EU, US)
+3. Google Cloud Storage (GCS) bucket where staging files will be located
+4. Google Cloud service account key file (required when running outside of Google Cloud)
+
+## Authentication
+
+When running outside of the Google Cloud it is necessary to specify a service account JSON key file. Information on how to generate service account credentials can be found at https://cloud.google.com/storage/docs/authentication#service_accounts. The service account key file can either be passed directly via `BigQueryConfig` or it can be passed through an environment variable: `export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service_account_keyfile.json` (see https://cloud.google.com/docs/authentication/getting-started for more information). When running on Google Cloud, e.g. Google Cloud Dataproc, [application default credentials](https://developers.google.com/identity/protocols/application-default-credentials) may be used in which case it is not necessary to specify a service account key file.
 
 
 ## License

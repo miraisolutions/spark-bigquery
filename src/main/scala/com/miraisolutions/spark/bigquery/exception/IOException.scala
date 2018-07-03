@@ -19,22 +19,10 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery.sql
-
-import org.apache.spark.sql.jdbc.JdbcDialect
+package com.miraisolutions.spark.bigquery.exception
 
 /**
-  * Google BigQuery standard SQL dialect (SQL-2011)
-  *
-  * @see [[https://cloud.google.com/bigquery/docs/reference/standard-sql/]]
+  * Signals an error when trying to read from or write to BigQuery.
+  * @param message Exception message
   */
-private case object BigQueryDialect extends JdbcDialect {
-
-  override def canHandle(url: String): Boolean = false
-
-  override def quoteIdentifier(colName: String): String = s"`$colName`"
-
-  override def getTableExistsQuery(table: String): String = s"SELECT 1 FROM $table LIMIT 1"
-
-  override def getSchemaQuery(table: String): String = s"SELECT * FROM $table LIMIT 1"
-}
+private[bigquery] class IOException(message: String) extends java.io.IOException(message)

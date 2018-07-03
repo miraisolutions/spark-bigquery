@@ -19,22 +19,46 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery.sql
+package com.miraisolutions.spark.bigquery.utils
 
-import org.apache.spark.sql.jdbc.JdbcDialect
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
 
 /**
-  * Google BigQuery standard SQL dialect (SQL-2011)
-  *
-  * @see [[https://cloud.google.com/bigquery/docs/reference/standard-sql/]]
+  * File utilities.
   */
-private case object BigQueryDialect extends JdbcDialect {
+private[bigquery] object Files {
 
-  override def canHandle(url: String): Boolean = false
+  /**
+    * Returns a Hadoop filesystem and path for the provided path.
+    * @param path File or directory path
+    * @param conf Hadoop configuration
+    * @return Hadoop filesystem and path
+    */
+  private def getFsAndPath(path: String, conf: Configuration): (FileSystem, Path) = {
+    val p = new Path(path)
+    val fs = FileSystem.get(p.toUri, conf)
+    (fs, p)
+  }
 
-  override def quoteIdentifier(colName: String): String = s"`$colName`"
+  /**
+    * Deletes the specified path recursively.
+    * @param path Path to delete
+    * @param conf Hadoop configuration
+    */
+  def delete(path: String, conf: Configuration): Unit = {
+    val (fs, p) = getFsAndPath(path, conf)
+    fs.delete(p, true)
+  }
 
-  override def getTableExistsQuery(table: String): String = s"SELECT 1 FROM $table LIMIT 1"
+  /**
+    * Registers the specified path for deletion when the underlying filesystem is being closed.
+    * @param path Path to delete
+    * @param conf Hadoop configuration
+    */
+  def deleteOnExit(path: String, conf: Configuration): Unit = {
+    val (fs, p) = getFsAndPath(path, conf)
+    fs.deleteOnExit(p)
+  }
 
-  override def getSchemaQuery(table: String): String = s"SELECT * FROM $table LIMIT 1"
 }

@@ -21,8 +21,23 @@
 
 package com.miraisolutions.spark.bigquery
 
+import com.miraisolutions.spark.bigquery.client.BigQueryTableReader
+import org.apache.spark.{Partition, SparkContext, TaskContext}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.Row
+
 /**
-  * Exception to be thrown in case of a missing parameter
-  * @param message Exception message
+  * BigQuery row RDD which reads a BigQuery table by streaming records through a set of pages.
+  * @param sc Spark context
+  * @param table Table reader used to read a BigQuery table through a number of partitions
   */
-private class MissingParameterException(message: String) extends Exception(message)
+class BigQueryRowRDD(sc: SparkContext, val table: BigQueryTableReader) extends RDD[Row](sc, Seq.empty) {
+
+  override def compute(split: Partition, context: TaskContext): Iterator[Row] = {
+    table.getRows(split.index).iterator
+  }
+
+  override protected def getPartitions: Array[Partition] = {
+    (0 until table.numPartitions).map(BigQueryPartition(_)).toArray
+  }
+}

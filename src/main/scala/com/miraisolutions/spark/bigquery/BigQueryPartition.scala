@@ -19,22 +19,12 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery.sql
+package com.miraisolutions.spark.bigquery
 
-import org.apache.spark.sql.jdbc.JdbcDialect
+import org.apache.spark.Partition
 
 /**
-  * Google BigQuery standard SQL dialect (SQL-2011)
-  *
-  * @see [[https://cloud.google.com/bigquery/docs/reference/standard-sql/]]
+  * BigQuery table partition identifier
+  * @param index Partition index
   */
-private case object BigQueryDialect extends JdbcDialect {
-
-  override def canHandle(url: String): Boolean = false
-
-  override def quoteIdentifier(colName: String): String = s"`$colName`"
-
-  override def getTableExistsQuery(table: String): String = s"SELECT 1 FROM $table LIMIT 1"
-
-  override def getSchemaQuery(table: String): String = s"SELECT * FROM $table LIMIT 1"
-}
+private final case class BigQueryPartition(override val index: Int) extends Partition

@@ -21,37 +21,75 @@
 
 package com.miraisolutions.spark.bigquery.examples
 
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{SaveMode, SparkSession}
+import com.miraisolutions.spark.bigquery.config._
 
 /**
   * Reads the public Google BigQuery sample dataset 'shakespeare'.
-  * See [[https://cloud.google.com/bigquery/public-data/]].
   *
-  * Run by providing:
+  * To run this example first compile an assembly using `sbt assembly`. Then run:
+  *
+  * ==Local Spark Cluster==
+  * `spark-submit --class com.miraisolutions.spark.bigquery.examples.Shakespeare --master local[*]
+  * target/scala-2.11/spark-bigquery-assembly-<version>.jar <arguments>`
+  *
+  * ==Google Cloud Dataproc==
+  * `gcloud dataproc jobs submit spark --cluster <cluster> --class
+  * com.miraisolutions.spark.bigquery.examples.Shakespeare --jars
+  * target/scala-2.11/spark-bigquery-assembly-<version>.jar -- <argument>`
+  *
+  * Where `<arguments>` are:
   *  1. Google BigQuery billing project ID
-  *  1. Google BigQuery GCS bucket (for temporary files)
+  *  1. Google BigQuery dataset location (EU, US)
+  *  1. Google Cloud Storage (GCS) bucket where staging files will be located
+  *  1. Google Cloud service account key file (required when running outside of Google Cloud)
+  *
+  * @see [[https://cloud.google.com/bigquery/public-data/]]
+  * @see [[https://cloud.google.com/bigquery/docs/dataset-locations]]
+  * @see [[https://cloud.google.com/storage/docs/authentication#service_accounts]]
+  * @see [[https://cloud.google.com/dataproc/]]
   */
 object Shakespeare {
   def main(args: Array[String]): Unit = {
+
+    // Initialize Spark session
     val spark = SparkSession
       .builder
       .appName("Google BigQuery Shakespeare")
       .getOrCreate
 
-    val shakespeare = spark.read
-      .format("bigquery")
-      .option("bq.project.id", args(0))
-      .option("bq.gcs.bucket", args(1))
-      .option("table", "bigquery-public-data:samples.shakespeare")
-      .load()
-
     import spark.implicits._
+
+    // Define BigQuery options
+    val config = BigQueryConfig(
+      project = args(0), // Google BigQuery billing project ID
+      location = args(1), // Google BigQuery dataset location
+      stagingDataset = StagingDatasetConfig(
+        gcsBucket = args(2) // Google Cloud Storage bucket for staging files
+      ),
+      serviceAccountKeyFile = if(args.length > 3) Some(args(3)) else None // Google Cloud service account key file
+    )
+
+    // Read public shakespeare data table using direct import (streaming)
+    val shakespeare = spark.read
+      .bigquery(config)
+      .option("table", "bigquery-public-data.samples.shakespeare")
+      .option("type", "direct")
+      .load()
 
     val hamlet = shakespeare.filter($"corpus".like("hamlet"))
     hamlet.show(100)
 
     shakespeare.createOrReplaceTempView("shakespeare")
-    val macbeth = spark.sql("SELECT * FROM shakespeare WHERE corpus = 'macbeth'")
+    val macbeth = spark.sql("SELECT * FROM shakespeare WHERE corpus = 'macbeth'").persist()
     macbeth.show(100)
+
+    // Write filtered data table via a Parquet export on GCS
+    macbeth.write
+      .bigquery(config)
+      .option("table", args(0) + ".samples.macbeth")
+      .option("type", "parquet")
+      .mode(SaveMode.Overwrite)
+      .save()
   }
 }

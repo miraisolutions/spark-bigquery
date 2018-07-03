@@ -16,38 +16,70 @@ startYear := Some(2018)
 
 licenses += ("MIT", new URL("https://opensource.org/licenses/MIT"))
 
-scalaVersion := "2.11.11"
+scalaVersion := "2.11.12"
+
+scalacOptions ++= Seq(
+  "-target:jvm-1.8",
+  "-deprecation",
+  "-feature",
+  "-unchecked"
+)
 
 resolvers += Opts.resolver.sonatypeReleases
 
-enablePlugins(SbtProguard)
+val sparkVersion = "2.3.0"
+
+val exclusions = Seq(
+  ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark
+  ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark
+  ExclusionRule("commons-lang", "commons-lang") // clashes with Spark
+)
 
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
-  "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
-  "org.scalatest" %% "scalatest" % "3.0.4" % "test",
-  "com.spotify" %% "spark-bigquery" % "0.2.3-SNAPSHOT" excludeAll(
-    ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
-    ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark 2.2.x
-    ExclusionRule("commons-lang", "commons-lang") // clashes with Spark 2.2.x
-  )
+  "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
+  "com.google.cloud" % "google-cloud-bigquery" % "1.35.0" excludeAll(exclusions: _*),
+  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2" excludeAll(exclusions: _*),
+  "com.databricks" %% "spark-avro" % "4.0.0",
+  "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
+  "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion}_0.9.0" % "it,test",
+  "org.apache.spark" %% "spark-hive" % sparkVersion % "it,test" // required by spark-testing-base
 )
+
+configs(IntegrationTest)
+
+Defaults.itSettings ++ headerSettings(IntegrationTest)
+
+IntegrationTest / fork := true
+
+IntegrationTest / javaOptions ++= Seq(
+  "-Xmx2048m",
+  "-Xms512m",
+  "-XX:+CMSClassUnloadingEnabled"
+)
+
+IntegrationTest / logBuffered := false
+
+IntegrationTest / testOptions += Tests.Argument("-oF")
+
+enablePlugins(SbtProguard)
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 
-// Shade google guava dependency due to version mismatch between bigquery connector and Spark
-// See https://github.com/spotify/spark-bigquery/issues/12
+// Shade google dependencies due to version mismatches with dependencies deployed on Google Dataproc
 assemblyShadeRules in assembly := Seq(
-  ShadeRule.rename("com.google.common.**" -> "shadegooglecommon.@1").inAll
+  ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
+  ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
 )
 
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", _) =>
     MergeStrategy.discard
-  case PathList("com", "databricks", "spark", "avro", xs @ _*) =>
-    // NOTE: "com.spotify" %% "spark-bigquery" provides a modified implementation of
-    // com.databricks.spark.avro.SchemaConverters
-    MergeStrategy.first
+
+  case PathList("META-INF", "maven", _*) =>
+    MergeStrategy.discard
+
   case _ =>
     MergeStrategy.singleOrError
 }
@@ -57,6 +89,10 @@ assemblyExcludedJars in assembly := {
   val cp = (fullClasspath in assembly).value
   cp filter { _.data.getName == "avro-ipc-1.7.7-tests.jar" }
 }
+
+javaOptions in (Proguard, proguard) := Seq(
+  "-Xmx4g"
+)
 
 // https://github.com/sbt/sbt-proguard/issues/23
 // https://stackoverflow.com/questions/39655207/how-to-obfuscate-fat-scala-jar-with-proguard-and-sbt
@@ -80,8 +116,10 @@ proguardOptions in Proguard ++=
       |}""".stripMargin,
     "-keep class org.apache.avro.** { *; }",
     "-keep class com.databricks.spark.avro.** { *; }",
-    "-keep class com.google.cloud.hadoop.** { *; }",
-    "-keep class com.spotify.spark.bigquery.** { *; }",
+    "-keep class shadegoogle.cloud.** { *; }",
+    "-keep class com.google.cloud.hadoop.fs.** { *; }",
+    "-keep class shadegoogle.common.** { *; }",
+    "-keep class shadegoogle.auth.** { *; }",
     "-keep class com.miraisolutions.spark.bigquery.** { *; }"
   )
 
@@ -106,12 +144,6 @@ def existsUrl(url: String): Boolean = {
 
 // Extends license report to include artifact description and link to JAR files
 licenseReportNotes := {
-  // TODO: remove this case once the released version is available
-  case DepModuleInfo("com.spotify", "spark-bigquery_2.11", "0.2.3-SNAPSHOT") =>
-    "Spark Bigquery" + '\u001F' + "spark-bigquery" + '\u001F' +
-      "N/A (waiting for next released version integrating https://github.com/spotify/spark-bigquery/pull/53)" +
-      '\u001F' + "N/A"
-
   case DepModuleInfo(group, id, version) =>
     try {
       // Fetch artifact information

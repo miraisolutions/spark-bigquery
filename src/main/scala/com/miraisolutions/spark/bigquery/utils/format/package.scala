@@ -19,34 +19,19 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.miraisolutions.spark.bigquery
+package com.miraisolutions.spark.bigquery.utils
 
-import com.miraisolutions.spark.bigquery.utils.SqlLogger
-import com.spotify.spark.bigquery._
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.sources.{BaseRelation, TableScan}
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{Row, SQLContext}
-import org.slf4j.LoggerFactory
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.types.StructField
 
-/**
-  * Relation for a Google BigQuery standard SQL query
-  *
-  * @param sqlQuery BigQuery standard SQL query in SQL-2011 dialect
-  * @param sqlContext Spark SQL context
-  */
-private final case class BigQuerySqlRelation(sqlQuery: String, sqlContext: SQLContext)
-  extends BaseRelation with TableScan {
+package object format {
 
-  private val logger = LoggerFactory.getLogger(classOf[BigQuerySqlRelation])
-  private val sqlLogger = SqlLogger(logger)
+  /**
+    * Generic converter partial function for converting data frame columns.
+    *
+    * The result of a converter is the new field definition/format and a column-to-column function to transform an
+    * existing column into the specified format.
+    */
+  type ColumnConverter = PartialFunction[StructField, (StructField, Column => Column)]
 
-  private lazy val dataFrame = {
-    sqlLogger.logSqlQuery(sqlQuery)
-    sqlContext.bigQuerySelect(sqlQuery)
-  }
-
-  override def schema: StructType = dataFrame.schema
-
-  override def buildScan(): RDD[Row] = dataFrame.rdd
 }
