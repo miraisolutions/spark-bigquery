@@ -23,8 +23,11 @@ package com.miraisolutions.spark.bigquery
 
 import com.google.cloud.bigquery.BigQuery.TableDataListOption
 import com.google.cloud.bigquery._
+import org.slf4j.LoggerFactory
 
 package object client {
+
+  private val logger = LoggerFactory.getLogger(this.getClass.getName)
 
   /**
     * Some convenience methods on [[Dataset]]
@@ -55,6 +58,9 @@ package object client {
     }
 
     def createTable(table: String, schema: Schema): Table = {
+      logger.info(s"Creating table $table in dataset ${ds.getDatasetId.getDataset} " +
+        s"of project ${ds.getDatasetId.getProject}")
+
       val tableDefinition = StandardTableDefinition.newBuilder()
         .setType(TableDefinition.Type.TABLE)
         .setSchema(schema)
@@ -64,7 +70,11 @@ package object client {
     }
 
     def dropTable(table: String): Unit = {
-      fold(table)((): Unit)(_.delete())
+      fold(table)((): Unit) { table =>
+        logger.info(s"Deleting table $table in dataset ${ds.getDatasetId.getDataset} " +
+          s"of project ${ds.getDatasetId.getProject}")
+        table.delete()
+      }
     }
 
     def dropAndCreateTable(table: String, schema: Schema): Table = {
