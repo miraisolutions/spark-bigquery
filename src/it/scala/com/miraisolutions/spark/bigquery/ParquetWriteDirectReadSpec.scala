@@ -37,6 +37,7 @@ import org.scalatest.prop.{Checkers, GeneratorDrivenPropertyChecks}
   *
   * @see [[https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet]]
   * @see [[https://cloud.google.com/bigquery/streaming-data-into-bigquery]]
+  * @see [[https://cloud.google.com/blog/big-data/2017/06/life-of-a-bigquery-streaming-insert]]
   */
 class ParquetWriteDirectReadSpec extends FunSuite with BigQueryTesting {
 

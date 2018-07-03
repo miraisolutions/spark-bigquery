@@ -21,6 +21,7 @@
 
 package com.miraisolutions.spark.bigquery
 
+import com.miraisolutions.spark.bigquery.FileFormat.CSV
 import com.miraisolutions.spark.bigquery.client.BigQueryClient
 import com.miraisolutions.spark.bigquery.config.BigQueryConfig
 import com.miraisolutions.spark.bigquery.exception.MissingParameterException
@@ -61,11 +62,20 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
       parameters.foldType[Unit](client.writeTable(data, table, mode)) { format =>
         val stagingDirectory = client.getStagingDirectory()
 
+        val opts: Map[String, String] = format match {
+          case CSV =>
+            Map("header" -> "true")
+
+          case _ =>
+            Map.empty
+        }
+
         // Use TIMESTAMP_MICROS in Parquet (supported since Spark 2.3.0)
         sqlContext.setConf("spark.sql.parquet.outputTimestampType", "TIMESTAMP_MICROS")
 
         data.write
           .format(format.sparkFormatIdentifier)
+          .options(opts)
           .save(stagingDirectory)
 
         client.importTable(stagingDirectory, format, table, mode)
@@ -120,12 +130,23 @@ private[bigquery] object DefaultSource {
     */
   private def getStagingDataFileRelation(sqlContext: SQLContext, stagingDirectory: String,
                                          format: FileFormat): BaseRelation = {
+
+    val opts: Map[String, String] = format match {
+      case CSV =>
+        Map("header" -> "true")
+
+      case _ =>
+        Map.empty
+    }
+
     val dataSource = DataSource(
       sparkSession = sqlContext.sparkSession,
       className = format.sparkFormatIdentifier,
       paths = List(stagingDirectory),
-      userSpecifiedSchema = None
+      userSpecifiedSchema = None,
+      options = opts
     )
+
     dataSource.resolveRelation(true)
   }
 
