@@ -25,6 +25,7 @@ import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 
 import com.google.cloud.RetryOption
+import com.google.cloud.bigquery.BigQuery.DatasetDeleteOption
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert
 import com.google.cloud.bigquery.JobInfo.{CreateDisposition, WriteDisposition}
 import com.google.cloud.bigquery.{Option => _, _}
@@ -146,6 +147,16 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
     */
   def deleteTable(table: BigQueryTableReference): Boolean = {
     bigquery.getTable(table).delete()
+  }
+
+  /**
+    * Deletes a BigQuery dataset and its contents.
+    * @param project Project ID
+    * @param dataset Dataset ID
+    * @return True if the dataset was deleted, false if it was not found.
+    */
+  def deleteDataset(project: String, dataset: String): Boolean = {
+    bigquery.delete(DatasetId.of(project, dataset), DatasetDeleteOption.deleteContents())
   }
 
   /**

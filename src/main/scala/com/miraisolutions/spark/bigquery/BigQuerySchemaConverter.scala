@@ -21,7 +21,7 @@
 
 package com.miraisolutions.spark.bigquery
 
-import com.google.cloud.bigquery._
+import com.google.cloud.bigquery.{Option => _, _}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
@@ -111,8 +111,10 @@ private[bigquery] object BigQuerySchemaConverter {
         StringType
     }
 
-    val isNullable = field.getMode.equals(Field.Mode.NULLABLE)
-    val isRepeated = field.getMode.equals(Field.Mode.REPEATED)
+    // Mode may be null in which case the default nullable is assumed
+    val mode = Option(field.getMode).getOrElse(Field.Mode.NULLABLE)
+    val isNullable = mode.equals(Field.Mode.NULLABLE)
+    val isRepeated = mode.equals(Field.Mode.REPEATED)
 
     if(isRepeated) {
       StructField(field.getName, ArrayType(dataType, isNullable), false)

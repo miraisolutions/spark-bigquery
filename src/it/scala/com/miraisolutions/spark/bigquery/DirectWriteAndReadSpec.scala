@@ -21,7 +21,6 @@
 
 package com.miraisolutions.spark.bigquery
 
-import com.miraisolutions.spark.bigquery.client.BigQueryClient
 import com.miraisolutions.spark.bigquery.test._
 import com.miraisolutions.spark.bigquery.test.data.{DataFrameGenerator, TestData}
 import org.apache.spark.sql.types.StructType
@@ -49,9 +48,9 @@ class DirectWriteAndReadSpec extends FunSuite with BigQueryTesting with Checkers
   override implicit val generatorDrivenConfig =
     PropertyCheckConfiguration(minSuccessful = 1, minSize = 10, sizeRange = 10)
 
-  private val bigQueryClient = new BigQueryClient(config)
   private val testTablePrefix = "direct_test"
-  private val testFields = TestData.atomicFields ++ TestData.arrayFields ++ TestData.mapFields
+  private val testFields =
+    TestData.atomicFields ++ TestData.arrayFields ++ TestData.mapFields ++ List(TestData.customStructField)
 
   testFields foreach { field =>
 
@@ -60,6 +59,7 @@ class DirectWriteAndReadSpec extends FunSuite with BigQueryTesting with Checkers
 
       val schema = StructType(List(field))
       implicit val arbitraryDataFrame = DataFrameGenerator.generate(sqlContext, schema)
+      // Use unique table name to avoid BigQuery schema caching issues
       val tableName = testTablePrefix + "_" + System.currentTimeMillis().toString
 
       forAll { df: DataFrame =>

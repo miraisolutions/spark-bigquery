@@ -22,9 +22,10 @@
 package com.miraisolutions.spark.bigquery.test
 
 import com.miraisolutions.spark.bigquery.BigQueryTableReference
+import com.miraisolutions.spark.bigquery.client.BigQueryClient
 import com.miraisolutions.spark.bigquery.config.{BigQueryConfig, _}
 import org.apache.spark.sql.{DataFrameReader, DataFrameWriter, Row}
-import org.scalatest.{Outcome, TestSuite, TestSuiteMixin}
+import org.scalatest.{BeforeAndAfterAll, Outcome, TestSuite, TestSuiteMixin}
 
 private object BigQueryConfiguration {
   // BigQuery test dataset name
@@ -40,11 +41,14 @@ private object BigQueryConfiguration {
   * -Dbq.staging_dataset.gcs_bucket=<gcs_bucket>
   * -Dbq.staging_dataset.service_account_key_file=<path_to_keyfile>
   */
-private[bigquery] trait BigQueryConfiguration extends TestSuiteMixin { this: TestSuite =>
+private[bigquery] trait BigQueryConfiguration extends TestSuiteMixin with BeforeAndAfterAll { this: TestSuite =>
   import BigQueryConfiguration._
 
   // Captured BigQuery test configuration
   private var _config: BigQueryConfig = _
+
+  /** BigQuery client */
+  protected lazy val bigQueryClient: BigQueryClient = new BigQueryClient(config)
 
   /** BigQuery configuration */
   protected def config: BigQueryConfig = _config
@@ -93,6 +97,11 @@ private[bigquery] trait BigQueryConfiguration extends TestSuiteMixin { this: Tes
         .option("table", getTestDatasetTableIdentifier(table))
         .option("type", exportType)
     }
+  }
+
+  override protected def afterAll(): Unit = {
+    // Removes the BigQuery test dataset at the end of a test suite
+    bigQueryClient.deleteDataset(_config.project, BIGQUERY_TEST_DATASET)
   }
 
   // See {{TestSuiteMixin}}
