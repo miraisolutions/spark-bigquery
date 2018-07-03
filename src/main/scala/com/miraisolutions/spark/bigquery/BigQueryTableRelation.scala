@@ -48,6 +48,7 @@ private final case class BigQueryTableRelation(sqlContext: SQLContext, client: B
 
   // See {{TableScan}}
   override def buildScan(): RDD[Row] = {
+    logger.info(s"Executing full scan of table $table")
     val tbl = client.getTable(table, sqlContext.sparkContext.defaultParallelism)
     new BigQueryRowRDD(sqlContext.sparkContext, tbl)
   }
@@ -59,6 +60,7 @@ private final case class BigQueryTableRelation(sqlContext: SQLContext, client: B
 
   // See {{PrunedFilteredScan}}
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
+    logger.info(s"Executing pruned filtered scan of table $table ")
     val sqlQuery = sql.getQuery(requiredColumns, filters)
     val tbl = client.executeQuery(sqlQuery, sqlContext.sparkContext.defaultParallelism)
     new BigQueryRowRDD(sqlContext.sparkContext, tbl)

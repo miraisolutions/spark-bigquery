@@ -76,7 +76,7 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
                                 (build: DatasetInfo.Builder => DatasetInfo.Builder): Dataset = {
     val datasetId = DatasetId.of(project, dataset)
     Option(bigquery.getDataset(datasetId)).getOrElse {
-      logger.info(s"Creating dataset '$dataset' in project '$project'")
+      logger.info(s"Creating dataset $dataset in project $project")
 
       val datasetBuilder = DatasetInfo.newBuilder(datasetId)
       // New datasets are always created in the configured location
@@ -146,6 +146,7 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
     * @return True if the table was deleted and false if the table was not found
     */
   def deleteTable(table: BigQueryTableReference): Boolean = {
+    logger.info(s"Deleting table $table")
     bigquery.getTable(table).delete()
   }
 
@@ -156,6 +157,7 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
     * @return True if the dataset was deleted, false if it was not found.
     */
   def deleteDataset(project: String, dataset: String): Boolean = {
+    logger.info(s"Deleting dataset $dataset in project $project")
     bigquery.delete(DatasetId.of(project, dataset), DatasetDeleteOption.deleteContents())
   }
 
