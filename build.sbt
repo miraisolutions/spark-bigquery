@@ -29,8 +29,7 @@ lazy val commonSettings = Seq(
     "-deprecation",
     "-feature",
     "-unchecked"
-  ),
-  skip in publish := true
+  )
 )
 
 // Dependencies that clash with Spark
@@ -80,6 +79,7 @@ lazy val root = (project in file("."))
   .settings(
     libraryDependencies := dependenciesToShade ++ sparkDependencies.value ++
       nonShadedDependencies.map(_ % "provided") ++ testDependencies.value,
+    skip in publish := true,
 
     Defaults.itSettings,
     IntegrationTest / fork := true,
@@ -96,9 +96,8 @@ lazy val root = (project in file("."))
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false),
     // Shade google dependencies due to version mismatches with dependencies deployed on Google Dataproc
     assemblyShadeRules in assembly := Seq(
-      ShadeRule.rename("com.miraisolutions.**" -> "com.miraisolutions.@1").inAll,
       ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
-      ShadeRule.rename("*.**" -> "shaded.@1.@2").inAll
+      ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
     ),
     assemblyMergeStrategy in assembly := {
       case PathList("META-INF", _) =>
@@ -158,6 +157,7 @@ lazy val distribution = (project in file("distribution"))
     libraryDependencies := nonShadedDependencies,
     // Spark packages need the github organization name as the group ID
     organization := "miraisolutions",
+    crossPaths := false,
     pomExtra := {
       <url>https://github.com/miraisolutions/spark-bigquery</url>
       <scm>
