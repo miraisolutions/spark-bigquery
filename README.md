@@ -1,16 +1,16 @@
-# spark-bigquery: A BigQuery Data Source for Apache Spark
+# spark-bigquery: A Google BigQuery Data Source for Apache Spark
 
-This project provides a [Google BigQuery](https://cloud.google.com/bigquery/) data source (`com.miraisolutions.spark.bigquery.DefaultSource`) to Spark using the new [Google Cloud client libraries](https://cloud.google.com/bigquery/docs/reference/libraries) for the Google BigQuery API. It supports "direct" import/export where records are directly streamed from/to BigQuery. In addition, data may be imported/exported via intermediate data extracts on [Google Cloud Storage](https://cloud.google.com/storage/) (GCS). Note that when using "direct" (streaming) export, data may not be immediately available for further querying/processing in BigQuery. It may take several minutes for streamed records to become "available". See the following resources for more information:
+This project provides a [Google BigQuery](https://cloud.google.com/bigquery/) data source (`com.miraisolutions.spark.bigquery.DefaultSource`) to [Apache Spark](https://spark.apache.org/) using the new [Google Cloud client libraries](https://cloud.google.com/bigquery/docs/reference/libraries) for the Google BigQuery API. It supports "direct" import/export where records are directly streamed from/to BigQuery. In addition, data may be imported/exported via intermediate data extracts on [Google Cloud Storage](https://cloud.google.com/storage/) (GCS). Note that when using "direct" (streaming) export, data may not be immediately available for further querying/processing in BigQuery. It may take several minutes for streamed records to become "available". See the following resources for more information:
 
 * https://cloud.google.com/bigquery/streaming-data-into-bigquery
 * https://cloud.google.com/blog/big-data/2017/06/life-of-a-bigquery-streaming-insert
 
 The following import/export combinations are currently supported:
 
-|                   | Direct             | Parquet            | Avro               | ORC                | JSON               | CSV                |
-| ----------------- | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ |
-| Import to Spark   | :heavy_check_mark: | :x:                | :heavy_check_mark: | :x:                | :heavy_check_mark: | :heavy_check_mark: |
-| Export from Spark | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :x:                | :x:                |
+|                                        | Direct             | Parquet            | Avro               | ORC                | JSON               | CSV                |
+| -------------------------------------- | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ |
+| Import to Spark (export from BigQuery) | :heavy_check_mark: | :x:                | :heavy_check_mark: | :x:                | :heavy_check_mark: | :heavy_check_mark: |
+| Export from Spark (import to BigQuery) | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :x:                | :x:                |
 
 
 More information on the various supported formats can be found at:
@@ -21,7 +21,7 @@ More information on the various supported formats can be found at:
 * JSON: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json
 * CSV: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv
 
-CSV and JSON are not recommended as data exchange formats between Spark and BigQuery due to their lack of type safety. Better options are direct import/export, Parquet, Avro and ORC.
+CSV and JSON are not recommended as data exchange formats between Apache Spark and BigQuery due to their lack of type safety. Better options are direct import/export, Parquet, Avro and ORC.
 
 
 This data source is used in the [sparkbq](https://github.com/miraisolutions/sparkbq) R package.
@@ -30,11 +30,9 @@ This data source is used in the [sparkbq](https://github.com/miraisolutions/spar
 
 Due to dependency version mismatches between Apache Spark and Google client libraries (e.g. Google Guava) this project uses [`sbt-assembly`](https://github.com/sbt/sbt-assembly) to build a fat JAR using [shading](https://github.com/sbt/sbt-assembly#shading) to relocate relevant Google classes.
 
-ProGuard may be used via the [`sbt-proguard`](https://github.com/sbt/sbt-proguard) plugin to further shrink the assembly size. Simply run `sbt proguard` to perform that step. The resulting JAR file can be found in the `target/proguard` folder.
-
 ## Version Information
 
-The following table provides an overview over supported versions of Spark, Scala and [Google Dataproc](https://cloud.google.com/dataproc/docs/concepts/versioning/dataproc-versions):
+The following table provides an overview over supported versions of Apache Spark, Scala and [Google Dataproc](https://cloud.google.com/dataproc/docs/concepts/versioning/dataproc-versions):
 
 | spark-bigquery | Spark | Scala | Google Dataproc |
 | :-----: | ----- | ----- | --------------- |
@@ -106,6 +104,65 @@ where `<arguments>` are:
 2. Google BigQuery dataset location (EU, US)
 3. Google Cloud Storage (GCS) bucket where staging files will be located
 4. Google Cloud service account key file (required when running outside of Google Cloud)
+
+
+## Schema Conversion
+
+### Using Direct Mode
+
+In **direct** (streaming) mode, spark-bigquery performs the following data type conversions between supported Spark data types and BigQuery data types:
+
+**Importing to Spark / Exporting from BigQuery**
+
+| BigQuery Source Data Type | Spark Target Data Type |
+| ------------------------- | ---------------------- |
+| BOOL                      | BooleanType            |
+| INT64                     | LongType               |
+| FLOAT64                   | DoubleType             |
+| NUMERIC                   | DecimalType(38, 9)     |
+| STRING                    | StringType             |
+| BYTES                     | BinaryType             |
+| STRUCT                    | StructType             |
+| TIMESTAMP                 | TimestampType          |
+| DATE                      | DateType               |
+| TIME                      | StringType             |
+| DATETIME                  | StringType             |
+
+BigQuery repeated fields are mapped to the corresponding Spark ArrayType. Also, BigQuery's nullable mode is used to determine the appropriate nullable property of the target Spark data type.
+
+**Exporting from Spark / Importing to BigQuery**
+
+| Spark Source Data Type | BigQuery Target Data Type |
+| ---------------------- | ------------------------- |
+| BooleanType            | BOOL                      |
+| ByteType               | INT64                     |
+| ShortType              | INT64                     |
+| IntegerType            | INT64                     |
+| LongType               | INT64                     |
+| FloatType              | FLOAT64                   |
+| DoubleType             | FLOAT64                   |
+| <= DecimalType(38, 9)  | NUMERIC                   |
+|  > DecimalType(38, 9)  | STRING                    |
+| StringType             | STRING                    |
+| BinaryType             | BYTES                     |
+| StructType             | STRUCT                    |
+| TimestampType          | TIMESTAMP                 |
+| DateType               | DATE                      |
+| MapType                | Repeated key-value STRUCT |
+| ArrayType              | Repeated field            |
+| Other                  | STRING                    |
+
+For more information on supported BigQuery data types see https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types.
+
+### Using GCS Data Extracts
+
+When using intermediate GCS data extracts (Parquet, Avro, ORC, ...) the result depends on the data format being used. Consult the data format's specification for information on supported data types. Furthermore, see the following resources on type conversions supported by BigQuery:
+
+* Parquet: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet
+* Avro: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-avro
+* ORC: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-orc
+* JSON: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json
+* CSV: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv
 
 ## Authentication
 
