@@ -1,80 +1,229 @@
-name := "spark-bigquery"
+import net.ruippeixotog.scalascraper.browser.JsoupBrowser
+import net.ruippeixotog.scalascraper.dsl.DSL._
+import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
+import com.typesafe.sbt.license.{DepModuleInfo, LicenseInfo}
+import ReleaseTransformations._
 
-organization := "com.miraisolutions"
+import scala.xml.{Node => XmlNode, NodeSeq => XmlNodeSeq, Elem}
+import scala.xml.transform._
 
-version := "0.1.0-SNAPSHOT"
+// Apache Spark version setting
+val sparkVersion = settingKey[String]("The version of Spark to use.")
 
-scalaVersion := "2.11.11"
+// Custom task for creating a Spark package release artifact
+val sparkPackage = taskKey[File]("Creates a Spark package release artifact.")
 
-resolvers += Opts.resolver.sonatypeReleases
-
-enablePlugins(SbtProguard)
-
-libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % "2.2.0" % "provided",
-  "org.apache.spark" %% "spark-sql" % "2.2.0" % "provided",
-  "org.scalatest" %% "scalatest" % "3.0.4" % "test",
-  // TODO: use released version once available;
-  // currently using (local) SNAPSHOT version with spark-avro 4.0.0
-  "com.spotify" %% "spark-bigquery" % "0.2.2-SNAPSHOT" excludeAll(
-    ExclusionRule("com.fasterxml.jackson.core", "jackson-core"), // clashes with Spark 2.2.x
-    ExclusionRule("commons-logging", "commons-logging"), // clashes with Spark 2.2.x
-    ExclusionRule("commons-lang", "commons-lang") // clashes with Spark 2.2.x
+lazy val commonSettings = Seq(
+  // Name must match github repository name
+  name := "spark-bigquery",
+  organization := "com.miraisolutions",
+  organizationName := "Mirai Solutions GmbH",
+  description := "A Google BigQuery Data Source for Apache Spark",
+  startYear := Some(2018),
+  licenses += ("MIT", new URL("https://opensource.org/licenses/MIT")),
+  sparkVersion := "2.3.0",
+  scalaVersion := "2.11.12",
+  crossScalaVersions := Seq("2.11.12"),
+  scalacOptions ++= Seq(
+    "-target:jvm-1.8",
+    "-deprecation",
+    "-feature",
+    "-unchecked"
   )
 )
 
-assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
-
-// Shade google guava dependency due to version mismatch between bigquery connector and Spark
-// See https://github.com/spotify/spark-bigquery/issues/12
-assemblyShadeRules in assembly := Seq(
-  ShadeRule.rename("com.google.common.**" -> "shadegooglecommon.@1").inAll
+// Dependencies that clash with Spark
+lazy val exclusions = Seq(
+  ExclusionRule("com.fasterxml.jackson.core", "jackson-core"),
+  ExclusionRule("commons-logging", "commons-logging"),
+  ExclusionRule("commons-lang", "commons-lang")
 )
 
-assemblyMergeStrategy in assembly := {
-  case PathList("META-INF", _) =>
-    MergeStrategy.discard
-  case PathList("com", "databricks", "spark", "avro", xs @ _*) =>
-    // NOTE: "com.spotify" %% "spark-bigquery" provides a modified implementation of
-    // com.databricks.spark.avro.SchemaConverters
-    MergeStrategy.first
-  case _ =>
-    MergeStrategy.singleOrError
+// Spark provided dependencies
+lazy val sparkDependencies = Def.setting(Seq(
+  "org.apache.spark" %% "spark-core" % sparkVersion.value % "provided",
+  "org.apache.spark" %% "spark-sql" % sparkVersion.value % "provided",
+  "org.apache.spark" %% "spark-mllib" % sparkVersion.value % "provided"
+))
+
+// Dependencies which need to be shaded to run on Google Cloud Dataproc
+lazy val dependenciesToShade = Seq(
+  "com.google.cloud" % "google-cloud-bigquery" % "1.35.0" excludeAll(exclusions: _*),
+  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2" excludeAll(exclusions: _*)
+)
+
+// Dependencies which don't need any shading
+lazy val nonShadedDependencies = Seq(
+  "com.databricks" %% "spark-avro" % "4.0.0"
+)
+
+// Test dependencies
+lazy val testDependencies = Def.setting(Seq(
+  "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
+  "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion.value}_0.9.0" % "it,test",
+  "org.apache.spark" %% "spark-hive" % sparkVersion.value % "it,test" // required by spark-testing-base
+))
+
+lazy val browser = JsoupBrowser()
+
+def existsUrl(url: String): Boolean = {
+  import java.net.{URL, HttpURLConnection}
+  (new URL(url)).openConnection().asInstanceOf[HttpURLConnection].getResponseCode == 200
 }
 
-// Exclude avro-ipc tests jar
-assemblyExcludedJars in assembly := {
-  val cp = (fullClasspath in assembly).value
-  cp filter { _.data.getName == "avro-ipc-1.7.7-tests.jar" }
-}
 
-// https://github.com/sbt/sbt-proguard/issues/23
-// https://stackoverflow.com/questions/39655207/how-to-obfuscate-fat-scala-jar-with-proguard-and-sbt
+lazy val root = (project in file("."))
+  .enablePlugins(AssemblyPlugin, AutomateHeaderPlugin)
+  .configs(IntegrationTest)
+  .settings(commonSettings: _*)
+  .settings(
+    libraryDependencies := dependenciesToShade ++ sparkDependencies.value ++
+      nonShadedDependencies.map(_ % "provided") ++ testDependencies.value,
+    skip in publish := true,
 
-proguardOptions in Proguard ++=
-  Seq(
-    "-dontobfuscate",
-    "-dontoptimize",
-    "-dontnote",
-    "-dontwarn",
-    "-ignorewarnings",
-    // "-dontskipnonpubliclibraryclasses",
-    // "-dontskipnonpubliclibraryclassmembers",
-    // "-keepparameternames",
-    // "-keepattributes *",
-    // https://stackoverflow.com/questions/33189249/how-to-tell-proguard-to-keep-enum-constants-and-fields
-    """-keepclassmembers class * extends java.lang.Enum {
-      |    <fields>;
-      |    public static **[] values();
-      |    public static ** valueOf(java.lang.String);
-      |}""".stripMargin,
-    "-keep class org.apache.avro.** { *; }",
-    "-keep class com.databricks.spark.avro.** { *; }",
-    "-keep class com.google.cloud.hadoop.** { *; }",
-    "-keep class com.spotify.spark.bigquery.** { *; }",
-    "-keep class com.miraisolutions.spark.bigquery.DefaultSource { *; }"
+    Defaults.itSettings,
+    IntegrationTest / fork := true,
+    IntegrationTest / javaOptions ++= Seq(
+      "-Xmx2048m",
+      "-Xms512m",
+      "-XX:+CMSClassUnloadingEnabled"
+    ),
+    IntegrationTest / logBuffered := false,
+    IntegrationTest / testOptions += Tests.Argument("-oF"),
+    automateHeaderSettings(IntegrationTest),
+
+    // See https://spark-packages.org/artifact-help
+    assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false),
+    // Shade google dependencies due to version mismatches with dependencies deployed on Google Dataproc
+    assemblyShadeRules in assembly := Seq(
+      ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
+      ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
+    ),
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", _) =>
+        MergeStrategy.discard
+      case PathList("META-INF", "maven", _*) =>
+        MergeStrategy.discard
+      case _ =>
+        MergeStrategy.singleOrError
+    },
+
+    // We release the distribution module only
+    releaseProcess := Seq.empty,
+
+    licenseConfigurations := Set("compile"),
+    licenseOverrides := {
+      case DepModuleInfo("org.slf4j", "slf4j-api", _) =>
+        LicenseInfo.MIT
+    },
+    // Extends license report to include artifact description and link to JAR files
+    licenseReportNotes := {
+      case DepModuleInfo(group, id, version) =>
+        try {
+          // Fetch artifact information
+          val doc = browser.get(s"https://mvnrepository.com/artifact/$group/$id/$version")
+          // Extract title
+          val title = (doc >> text(".im-title")).replaceFirst("\\s»\\s.+$", "")
+          // Extract description
+          val description = doc >> text(".im-description")
+          // Locate link to JAR file
+          val mainJar = (doc >> elementList("a.vbtn"))
+            .filter(element => element.innerHtml.startsWith("jar") || element.innerHtml.startsWith("bundle"))
+            .map(_ >> attr("href"))
+            .headOption
+            .getOrElse(throw new NoSuchElementException("Can't locate JAR file"))
+
+          // Derive link to sources JAR file
+          val sourcesJar = mainJar.replaceFirst("\\.jar$", "-sources.jar")
+
+          // Check if JAR file exists
+          require(existsUrl(mainJar), "Invalid link to JAR file")
+          // Check if sources JAR file exists
+          require(existsUrl(sourcesJar), "Invalid link to sources JAR file")
+          // https://en.wikipedia.org/wiki/C0_and_C1_control_codes (unit separator)
+          title + '\u001F' + description + '\u001F' + mainJar + '\u001F' + sourcesJar
+        } catch {
+          case t: Throwable =>
+            "**** " + t.getMessage + " ****"
+        }
+    }
   )
 
-proguardInputs in Proguard := Seq(baseDirectory.value / "target" / s"scala-${scalaVersion.value.dropRight(3)}" / s"${name.value}-assembly-${version.value}.jar")
+// A "virtual" project with configurations to build Spark packages
+// See https://spark-packages.org/artifact-help
+lazy val distribution = (project in file("distribution"))
+  .settings(commonSettings: _*)
+  .settings(
+    libraryDependencies := nonShadedDependencies,
+    // Spark packages need the github organization name as the group ID
+    organization := "miraisolutions",
+    crossPaths := false,
+    pomExtra := {
+      <url>https://github.com/miraisolutions/spark-bigquery</url>
+      <scm>
+        <url>git@github.com:miraisolutions/spark-bigquery.git</url>
+        <connection>scm:git:git@github.com:miraisolutions/spark-bigquery.git</connection>
+      </scm>
+      <developers>
+        <developer>
+          <id>martinstuder</id>
+          <name>Martin Studer</name>
+          <url>https://github.com/martinstuder</url>
+        </developer>
+        <developer>
+          <id>lambiase</id>
+          <name>Nicola Lambiase</name>
+          <url>https://github.com/lambiase</url>
+        </developer>
+      </developers>
+    },
+    // Spark packages need the github repository name as the artifact ID
+    pomPostProcess := { (node: XmlNode) =>
+      val rule = new RewriteRule {
+        override def transform(n: XmlNode): XmlNodeSeq = n match {
+          case n: Elem if n.label == "project" =>
+            val updatedChildren = n.child map {
+              case c if c.label == "artifactId" =>
+                <artifactId>{normalizedName.value}</artifactId>
 
-proguardMerge in Proguard := false
+              case c if c.label == "version" =>
+                <version>{version.value}-s_{scalaBinaryVersion.value}</version>
+
+              case c =>
+                c
+            }
+            n.copy(child = updatedChildren)
+
+          case n =>
+            n
+        }
+      }
+      new RuleTransformer(rule)(node)
+    },
+    Compile / packageBin := (root / Compile / assembly).value,
+    sparkPackage := {
+      val jar = (Compile / packageBin).value
+      val pom = makePom.value
+      val packageVersion = s"${version.value}-s_${scalaBinaryVersion.value}"
+      val packageName = s"${normalizedName.value}-$packageVersion"
+      val zipFile = target.value / s"$packageName.zip"
+      IO.delete(zipFile)
+      IO.zip(Seq(jar -> s"$packageName.jar", pom -> s"$packageName.pom"), zipFile)
+      println(s"\nSpark Package created at: $zipFile\n")
+      zipFile
+    },
+
+    releaseVersionFile := (ThisBuild / baseDirectory).value / "version.sbt",
+    releaseProcess := Seq[ReleaseStep](
+      checkSnapshotDependencies,
+      inquireVersions,
+      runClean,
+      setReleaseVersion,
+      commitReleaseVersion,
+      tagRelease,
+      releaseStepTask(sparkPackage),
+      setNextVersion,
+      commitNextVersion,
+      pushChanges
+    )
+  )
