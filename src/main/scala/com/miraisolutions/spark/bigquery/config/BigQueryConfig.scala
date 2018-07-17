@@ -21,20 +21,20 @@
 
 package com.miraisolutions.spark.bigquery.config
 
-import com.google.cloud.bigquery.QueryJobConfiguration.Priority
+import com.miraisolutions.spark.bigquery.config.JobConfig.Priority
 
-private[bigquery] object StagingDatasetConfig {
+object StagingDatasetConfig {
   private val namespace = "bq.staging_dataset."
 
-  val DESCRIPTION = "Spark BigQuery staging dataset"
+  private[bigquery] val DESCRIPTION = "Spark BigQuery staging dataset"
 
-  object Keys {
+  private[config] object Keys {
     val NAME = namespace + "name"
     val LIFETIME = namespace + "lifetime"
     val GCS_BUCKET = namespace + "gcs_bucket"
   }
 
-  object Defaults {
+  private[config] object Defaults {
     val NAME = "spark_staging"
     val LIFETIME = 86400000L
   }
@@ -56,16 +56,52 @@ case class StagingDatasetConfig(
 )
 
 
-private[bigquery] object JobConfig {
+object JobConfig {
+  import com.google.cloud.bigquery.QueryJobConfiguration.{Priority => BQPriority}
+
   private val namespace = "bq.job."
 
-  object Keys {
+  /** BigQuery job priority */
+  sealed trait Priority {
+    private[bigquery] def underlying: BQPriority
+  }
+  object Priority {
+
+    /**
+      * BigQuery interactive priority. Runs jobs as soon as possible. Interactive queries count towards the
+      * concurrent rate limit and the daily limit.
+      *
+      * @see https://cloud.google.com/bigquery/docs/running-queries
+      * @see https://cloud.google.com/bigquery/quotas
+      */
+    case object Interactive extends Priority {
+      override private[bigquery] def underlying: BQPriority = BQPriority.INTERACTIVE
+    }
+
+    /**
+      * BigQuery batch priority. Jobs start as soon as idle resources are available, usually within a few minutes.
+      * Batch queries don't count towards the concurrent rate limit and the daily limit.
+      *
+      * @see https://cloud.google.com/bigquery/docs/running-queries
+      */
+    case object Batch extends Priority {
+      override private[bigquery] def underlying: BQPriority = BQPriority.BATCH
+    }
+
+    private[config] def parse(s: String): Priority = s.toLowerCase match {
+      case "interactive" => Interactive
+      case "batch" => Batch
+      case _ => throw new IllegalArgumentException("Invalid priority: " + s)
+    }
+  }
+
+  private[config] object Keys {
     val PRIORITY = namespace + "priority"
     val TIMEOUT = namespace + "timeout"
   }
 
-  object Defaults {
-    val PRIORITY = Priority.INTERACTIVE
+  private[config] object Defaults {
+    val PRIORITY = Priority.Interactive
     val TIMEOUT = 3600000L
   }
 }
@@ -84,10 +120,10 @@ case class JobConfig(
 )
 
 
-private[bigquery] object BigQueryConfig {
+object BigQueryConfig {
   private val namespace = "bq."
 
-  object Keys {
+  private[config] object Keys {
     val PROJECT = namespace + "project"
     val LOCATION = namespace + "location"
     val SERVICE_ACCOUNT_KEY_FILE = namespace + "service_account_key_file"
@@ -110,7 +146,7 @@ private[bigquery] object BigQueryConfig {
     )
 
     val job = JobConfig(
-      priority = parameters.get(JobConfig.Keys.PRIORITY).map(Priority.valueOf).getOrElse(JobConfig.Defaults.PRIORITY),
+      priority = parameters.get(JobConfig.Keys.PRIORITY).map(Priority.parse).getOrElse(JobConfig.Defaults.PRIORITY),
       timeout = parameters.get(JobConfig.Keys.TIMEOUT).map(_.toLong).getOrElse(JobConfig.Defaults.TIMEOUT)
     )
 

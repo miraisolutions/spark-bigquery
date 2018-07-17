@@ -195,7 +195,7 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
         .setUseLegacySql(false)
         .setAllowLargeResults(true)
         .setFlattenResults(false)
-        .setPriority(config.job.priority)
+        .setPriority(config.job.priority.underlying)
         .setDestinationTable(tempTable)
         .setCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
         .setWriteDisposition(WriteDisposition.WRITE_EMPTY)
