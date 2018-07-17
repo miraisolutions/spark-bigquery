@@ -3,8 +3,9 @@ import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
 import com.typesafe.sbt.license.{DepModuleInfo, LicenseInfo}
 import ReleaseTransformations._
+import sbtrelease.{Version, versionFormatError}
 
-import scala.xml.{Node => XmlNode, NodeSeq => XmlNodeSeq, Elem}
+import scala.xml.{Elem, Node => XmlNode, NodeSeq => XmlNodeSeq}
 import scala.xml.transform._
 
 // Apache Spark version setting
@@ -48,7 +49,7 @@ lazy val sparkDependencies = Def.setting(Seq(
 
 // Dependencies which need to be shaded to run on Google Cloud Dataproc
 lazy val dependenciesToShade = Seq(
-  "com.google.cloud" % "google-cloud-bigquery" % "1.35.0" excludeAll(exclusions: _*),
+  "com.google.cloud" % "google-cloud-bigquery" % "1.36.0" excludeAll(exclusions: _*),
   "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2" excludeAll(exclusions: _*)
 )
 
@@ -154,6 +155,8 @@ lazy val root = (project in file("."))
 lazy val distribution = (project in file("distribution"))
   .settings(commonSettings: _*)
   .settings(
+    // Include the Scala binary version here
+    version := s"${(root / version).value}-s_${scalaBinaryVersion.value}",
     libraryDependencies := nonShadedDependencies,
     // Spark packages need the github organization name as the group ID
     organization := "miraisolutions",
@@ -186,9 +189,6 @@ lazy val distribution = (project in file("distribution"))
               case c if c.label == "artifactId" =>
                 <artifactId>{normalizedName.value}</artifactId>
 
-              case c if c.label == "version" =>
-                <version>{version.value}-s_{scalaBinaryVersion.value}</version>
-
               case c =>
                 c
             }
@@ -204,8 +204,7 @@ lazy val distribution = (project in file("distribution"))
     sparkPackage := {
       val jar = (Compile / packageBin).value
       val pom = makePom.value
-      val packageVersion = s"${version.value}-s_${scalaBinaryVersion.value}"
-      val packageName = s"${normalizedName.value}-$packageVersion"
+      val packageName = s"${normalizedName.value}-${version.value}"
       val zipFile = target.value / s"$packageName.zip"
       IO.delete(zipFile)
       IO.zip(Seq(jar -> s"$packageName.jar", pom -> s"$packageName.pom"), zipFile)
@@ -213,6 +212,9 @@ lazy val distribution = (project in file("distribution"))
       zipFile
     },
 
+    releaseVersion := { _ =>
+      Version((root / version).value).map(_.withoutQualifier.string).getOrElse(versionFormatError)
+    },
     releaseVersionFile := (ThisBuild / baseDirectory).value / "version.sbt",
     releaseProcess := Seq[ReleaseStep](
       checkSnapshotDependencies,
