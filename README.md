@@ -106,6 +106,35 @@ where `<arguments>` are:
 4. Google Cloud service account key file (required when running outside of Google Cloud)
 
 
+## Configuration
+
+The three main Spark read/write options include:
+
+* `table`: The BigQuery table to read/write. To be specified in the form `[projectId].[datasetId].[tableId]`. One of `table` or `sqlQuery` must be specified.
+* `sqlQuery`: A SQL query in Google BigQuery standard SQL dialect (SQL-2011). One of `table` or `sqlQuery` must be specified. 
+* `type` (optional): The BigQuery import/export type to use. Options include "direct", "parquet", "avro", "orc", "json" and "csv". Defaults to "direct". See the table at the top for supported type and import/export combinations.
+
+
+In addition, there are a number of BigQuery configuration options that can be specified in two ways: the traditional way using Spark's read/write options (e.g. `spark.read.option("bq.project", "<your_project>")`) and using the `bigquery` extension method (`spark.read.bigquery(config)`; see example above) which is usually more straightforward to use. If you prefer the traditional way or if you are using spark-bigquery in a non-Scala environment (e.g. PySpark), the configuration keys are as follows:
+
+* `bq.project` (required): Google BigQuery billing project id
+* `bq.location` (required): Geographic location where newly created datasets should reside. "EU" or "US".
+* `bq.service_account_key_file` (optional): Google Cloud service account key file to use for authentication with Google Cloud services. The use of service accounts is highly recommended. Specifically, the service account will be used to interact with BigQuery and Google Cloud Storage (GCS). If not specified, application default credentials will be used.
+* `bq.staging_dataset.name` (optional): Prefix of BigQuery staging dataset. A staging dataset is used to temporarily store the results of SQL queries. Defaults to "spark_staging".
+* `bq.staging_dataset.lifetime` (optional): Default staging dataset table lifetime in milliseconds. Tables are automatically deleted once the lifetime has been reached. Defaults to 86400000 ms (= 1 day).
+* `bq.staging_dataset.gcs_bucket` (required): Google Cloud Storage (GCS) bucket to use for storing temporary files. Temporary files are used when importing through BigQuery load jobs and exporting through BigQuery extraction jobs (i.e. when using data extracts such as Parquet, Avro, ORC, ...). The service account specified in `bq.service_account_key_file` needs to be given appropriate rights.
+* `bq.job.priority` (optional): BigQuery job priority when executing SQL queries. Options include "interactive" and "batch". Defaults to "interactive", i.e. the query is executed as soon as possible.
+* `bq.job.timeout` (optional): Timeout in milliseconds after which a file import/export job should be considered as failed. Defaults to 3600000 ms (= 1 h).
+
+
+See the following resources for more information:
+* [BigQuery pricing](https://cloud.google.com/bigquery/pricing)
+* [BigQuery dataset locations](https://cloud.google.com/bigquery/docs/dataset-locations)
+* [General authentication](https://cloud.google.com/docs/authentication/)
+* [BigQuery authentication](https://cloud.google.com/bigquery/docs/authentication/)
+* [Cloud Storage authentication](https://cloud.google.com/storage/docs/authentication/)
+
+
 ## Schema Conversion
 
 ### Using Direct Mode
