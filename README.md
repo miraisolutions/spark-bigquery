@@ -42,7 +42,7 @@ The following table provides an overview over supported versions of Apache Spark
 
 The provided Google BigQuery data source (`com.miraisolutions.spark.bigquery.DefaultSource`) can be used as follows:
 
-``` scala
+```scala
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import com.miraisolutions.spark.bigquery.config._
 
@@ -104,6 +104,112 @@ where `<arguments>` are:
 2. Google BigQuery dataset location (EU, US)
 3. Google Cloud Storage (GCS) bucket where staging files will be located
 4. Google Cloud service account key file (required when running outside of Google Cloud)
+
+
+## Using the spark-bigquery Spark package
+
+spark-bigquery is available as Spark package from https://spark-packages.org/package/miraisolutions/spark-bigquery and as such via the Maven coordinates `miraisolutions:spark-bigquery:<version>`. You can simply specify the appropriate Maven coordinates with the `--packages` option when using the Spark shell or when using `spark-submit`.
+
+### Using the Spark Shell
+
+`spark-shell --master local[*] --packages miraisolutions:spark-bigquery:<version>`
+
+```scala
+import com.miraisolutions.spark.bigquery.config._
+
+// Define BigQuery options
+val config = BigQueryConfig(
+  project = "<your_billing_project_id>",
+  location = "US",
+  stagingDataset = StagingDatasetConfig(
+    gcsBucket = "<your_gcs_bucket>"
+  ),
+  serviceAccountKeyFile = Some("<your_service_account_key_file>")
+)
+
+val shakespeare = spark.read
+  .bigquery(config)
+  .option("table", "bigquery-public-data.samples.shakespeare")
+  .option("type", "direct")
+  .load()
+  
+shakespeare.show()
+```
+
+### Using PySpark
+
+`pyspark --master local[*] --packages miraisolutions:spark-bigquery:<version>`
+
+```python
+shakespeare = spark.read \
+  .format("bigquery") \
+  .option("bq.project", "<your_billing_project_id>") \
+  .option("bq.location", "US") \
+  .option("bq.service_account_key_file", "<your_service_account_key_file>") \
+  .option("bq.staging_dataset.gcs_bucket", "<your_gcs_bucket>") \
+  .option("table", "bigquery-public-data.samples.shakespeare") \
+  .option("type", "direct") \
+  .load()
+  
+shakespeare.show()
+```
+
+### Using `spark-submit`
+
+Assume the following Spark application which has been compiled into a JAR named `Shakespeare.jar` (you may want to use something like [Holden Karau's Giter8 Spark project template](https://github.com/holdenk/sparkProjectTemplate.g8) for this):
+
+```scala
+package com.example
+
+import org.apache.spark.sql.SparkSession
+import com.miraisolutions.spark.bigquery.config._
+
+object Shakespeare {
+	
+	def main(args: Array[String]): Unit = {
+		
+		// Initialize Spark session
+		val spark = SparkSession
+		  .builder
+		  .appName("Google BigQuery Shakespeare")
+		  .getOrCreate
+		
+		// Define BigQuery options
+		val config = BigQueryConfig(
+		  project = "<your_billing_project_id>",
+		  location = "US",
+		  stagingDataset = StagingDatasetConfig(
+			gcsBucket = "<your_gcs_bucket>"
+		  ),
+		  serviceAccountKeyFile = Some("<your_service_account_key_file>")
+		)
+
+		// Read public shakespeare data table using direct import (streaming)
+		val shakespeare = spark.read
+		  .bigquery(config)
+		  .option("table", "bigquery-public-data.samples.shakespeare")
+		  .option("type", "direct")
+		  .load()
+  		
+  		shakespeare.show()	
+  		
+	}
+	
+}
+```
+
+You can run this application using `spark-submit` in the following way:
+
+`spark-submit --class com.example.Shakespeare --master local[*] --packages miraisolutions:spark-bigquery:<version> Shakespeare.jar`
+
+
+### Using `gcloud dataproc jobs submit`
+
+Similar to the `spark-submit` example above, the Spark application can be submitted to Google Dataproc using
+
+`gcloud dataproc jobs submit spark --cluster <dataproc_cluster_name> --class com.example.Shakespeare --jars Shakespeare.jar --properties "spark.jars.packages=miraisolutions:spark-bigquery:<version>"`
+
+You may choose not to specify a service account key file and use default application credentials instead when running on Dataproc.
 
 
 ## Configuration

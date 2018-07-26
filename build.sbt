@@ -14,6 +14,9 @@ val sparkVersion = settingKey[String]("The version of Spark to use.")
 // Custom task for creating a Spark package release artifact
 val sparkPackage = taskKey[File]("Creates a Spark package release artifact.")
 
+// Setting Maven properties as needed by gcs-connector
+val mavenProps = settingKey[Unit]("Setting Maven properties")
+
 lazy val commonSettings = Seq(
   // Name must match github repository name
   name := "spark-bigquery",
@@ -49,8 +52,8 @@ lazy val sparkDependencies = Def.setting(Seq(
 
 // Dependencies which need to be shaded to run on Google Cloud Dataproc
 lazy val dependenciesToShade = Seq(
-  "com.google.cloud" % "google-cloud-bigquery" % "1.36.0" excludeAll(exclusions: _*),
-  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2" excludeAll(exclusions: _*)
+  "com.google.cloud" % "google-cloud-bigquery" % "1.37.1" excludeAll(exclusions: _*),
+  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.9.2-hadoop2" excludeAll(exclusions: _*)
 )
 
 // Dependencies which don't need any shading
@@ -81,6 +84,11 @@ lazy val root = (project in file("."))
     libraryDependencies := dependenciesToShade ++ sparkDependencies.value ++
       nonShadedDependencies.map(_ % "provided") ++ testDependencies.value,
     skip in publish := true,
+    mavenProps := {
+      // Required by gcs-connector
+      sys.props("hadoop.identifier") = "hadoop2"
+      ()
+    },
 
     Defaults.itSettings,
     IntegrationTest / fork := true,
