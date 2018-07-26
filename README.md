@@ -35,8 +35,8 @@ Due to dependency version mismatches between Apache Spark and Google client libr
 The following table provides an overview over supported versions of Apache Spark, Scala and [Google Dataproc](https://cloud.google.com/dataproc/docs/concepts/versioning/dataproc-versions):
 
 | spark-bigquery | Spark | Scala | Google Dataproc |
-| :-----: | ----- | ----- | --------------- |
-| 0.1.x | 2.3.x | 2.11 | 1.3 |
+| :------------: | ----- | ----- | --------------- |
+| 0.1.x          | 2.3.x | 2.11  | 1.3             |
 
 ## Example
 
