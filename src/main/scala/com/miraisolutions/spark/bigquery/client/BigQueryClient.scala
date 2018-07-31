@@ -32,7 +32,7 @@ import com.google.cloud.bigquery.InsertAllRequest.RowToInsert
 import com.google.cloud.bigquery.JobInfo.{CreateDisposition, WriteDisposition}
 import com.google.cloud.bigquery.{Option => _, _}
 import com.miraisolutions.spark.bigquery.config.{BigQueryConfig, StagingDatasetConfig}
-import com.miraisolutions.spark.bigquery.exception.IOException
+import com.miraisolutions.spark.bigquery.exception.{IOException, UnsupportedFormatException}
 import com.miraisolutions.spark.bigquery.utils.SqlLogger
 import com.miraisolutions.spark.bigquery.{BigQuerySchemaConverter, BigQueryTableReference, FileFormat}
 import org.apache.spark.sql.types.StructType
@@ -45,12 +45,19 @@ import scala.language.implicitConversions
 import scala.util.Random
 
 private object BigQueryClient {
+  import FileFormat._
+
   // Prefix for temporary tables and directories
   private val TEMP_PREFIX = "spark_"
 
   // Timestamp formatter for temporary tables and GCS staging directories
   private val TIMESTAMP_FORMATTER =
     DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneId.of("UTC"))
+
+  // File formats not currently available for BigQuery imports
+  private val UNSUPPORTED_BIGQUERY_IMPORT_FORMATS: Set[FileFormat] = Set(JSON, CSV)
+  // File formats not currently available for BigQuery exports
+  private val UNSUPPORTED_BIGQUERY_EXPORT_FORMATS: Set[FileFormat] = Set(PARQUET, ORC)
 }
 
 /**
@@ -290,6 +297,10 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
     * @see [[https://cloud.google.com/bigquery/docs/exporting-data]]
     */
   def exportTable(table: BigQueryTableReference, format: FileFormat): String = {
+    if(UNSUPPORTED_BIGQUERY_EXPORT_FORMATS.contains(format)) {
+      throw new UnsupportedFormatException(s"Unsupported BigQuery export format: $format")
+    }
+
     val stagingDirectory = getStagingDirectory()
     val destinationUri = s"$stagingDirectory/${table.table}_*.${format.fileExtension}"
 
@@ -310,6 +321,10 @@ private[bigquery] class BigQueryClient(val config: BigQueryConfig) {
     */
   def importTable(path: String, format: FileFormat, table: BigQueryTableReference, mode: SaveMode): Unit = {
     import SaveMode._
+
+    if(UNSUPPORTED_BIGQUERY_IMPORT_FORMATS.contains(format)) {
+      throw new UnsupportedFormatException(s"Unsupported BigQuery import format: $format")
+    }
 
     getOrCreateDataset(table.project, table.dataset)(identity)
 
