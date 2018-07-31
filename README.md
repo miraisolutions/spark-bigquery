@@ -34,15 +34,15 @@ Due to dependency version mismatches between Apache Spark and Google client libr
 
 The following table provides an overview over supported versions of Apache Spark, Scala and [Google Dataproc](https://cloud.google.com/dataproc/docs/concepts/versioning/dataproc-versions):
 
-| spark-bigquery | Spark | Scala | Google Dataproc |
-| :-----: | ----- | ----- | --------------- |
-| 0.1.x | 2.3.x | 2.11 | 1.3 |
+| spark-bigquery | Spark           | Scala | Google Dataproc |
+| :------------: | --------------- | ----- | --------------- |
+| 0.1.x          | 2.2.x and 2.3.x | 2.11  | 1.2.x and 1.3.x |
 
 ## Example
 
 The provided Google BigQuery data source (`com.miraisolutions.spark.bigquery.DefaultSource`) can be used as follows:
 
-``` scala
+```scala
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import com.miraisolutions.spark.bigquery.config._
 
@@ -104,6 +104,141 @@ where `<arguments>` are:
 2. Google BigQuery dataset location (EU, US)
 3. Google Cloud Storage (GCS) bucket where staging files will be located
 4. Google Cloud service account key file (required when running outside of Google Cloud)
+
+
+## Using the spark-bigquery Spark package
+
+spark-bigquery is available as Spark package from https://spark-packages.org/package/miraisolutions/spark-bigquery and as such via the Maven coordinates `miraisolutions:spark-bigquery:<version>`. You can simply specify the appropriate Maven coordinates with the `--packages` option when using the Spark shell or when using `spark-submit`.
+
+### Using the Spark Shell
+
+`spark-shell --master local[*] --packages miraisolutions:spark-bigquery:<version>`
+
+```scala
+import com.miraisolutions.spark.bigquery.config._
+
+// Define BigQuery options
+val config = BigQueryConfig(
+  project = "<your_billing_project_id>",
+  location = "US",
+  stagingDataset = StagingDatasetConfig(
+    gcsBucket = "<your_gcs_bucket>"
+  ),
+  serviceAccountKeyFile = Some("<your_service_account_key_file>")
+)
+
+val shakespeare = spark.read
+  .bigquery(config)
+  .option("table", "bigquery-public-data.samples.shakespeare")
+  .option("type", "direct")
+  .load()
+  
+shakespeare.show()
+```
+
+### Using PySpark
+
+`pyspark --master local[*] --packages miraisolutions:spark-bigquery:<version>`
+
+```python
+shakespeare = spark.read \
+  .format("bigquery") \
+  .option("bq.project", "<your_billing_project_id>") \
+  .option("bq.location", "US") \
+  .option("bq.service_account_key_file", "<your_service_account_key_file>") \
+  .option("bq.staging_dataset.gcs_bucket", "<your_gcs_bucket>") \
+  .option("table", "bigquery-public-data.samples.shakespeare") \
+  .option("type", "direct") \
+  .load()
+  
+shakespeare.show()
+```
+
+### Using `spark-submit`
+
+Assume the following Spark application which has been compiled into a JAR named `Shakespeare.jar` (you may want to use something like [Holden Karau's Giter8 Spark project template](https://github.com/holdenk/sparkProjectTemplate.g8) for this):
+
+```scala
+package com.example
+
+import org.apache.spark.sql.SparkSession
+import com.miraisolutions.spark.bigquery.config._
+
+object Shakespeare {
+	
+	def main(args: Array[String]): Unit = {
+		
+		// Initialize Spark session
+		val spark = SparkSession
+		  .builder
+		  .appName("Google BigQuery Shakespeare")
+		  .getOrCreate
+		
+		// Define BigQuery options
+		val config = BigQueryConfig(
+		  project = "<your_billing_project_id>",
+		  location = "US",
+		  stagingDataset = StagingDatasetConfig(
+			gcsBucket = "<your_gcs_bucket>"
+		  ),
+		  serviceAccountKeyFile = Some("<your_service_account_key_file>")
+		)
+
+		// Read public shakespeare data table using direct import (streaming)
+		val shakespeare = spark.read
+		  .bigquery(config)
+		  .option("table", "bigquery-public-data.samples.shakespeare")
+		  .option("type", "direct")
+		  .load()
+  		
+  		shakespeare.show()	
+  		
+	}
+	
+}
+```
+
+You can run this application using `spark-submit` in the following way:
+
+`spark-submit --class com.example.Shakespeare --master local[*] --packages miraisolutions:spark-bigquery:<version> Shakespeare.jar`
+
+
+### Using `gcloud dataproc jobs submit`
+
+Similar to the `spark-submit` example above, the Spark application can be submitted to Google Dataproc using
+
+`gcloud dataproc jobs submit spark --cluster <dataproc_cluster_name> --class com.example.Shakespeare --jars Shakespeare.jar --properties "spark.jars.packages=miraisolutions:spark-bigquery:<version>"`
+
+You may choose not to specify a service account key file and use default application credentials instead when running on Dataproc.
+
+
+## Configuration
+
+The three main Spark read/write options include:
+
+* `table`: The BigQuery table to read/write. To be specified in the form `[projectId].[datasetId].[tableId]`. One of `table` or `sqlQuery` must be specified.
+* `sqlQuery`: A SQL query in Google BigQuery standard SQL dialect (SQL-2011). One of `table` or `sqlQuery` must be specified. 
+* `type` (optional): The BigQuery import/export type to use. Options include "direct", "parquet", "avro", "orc", "json" and "csv". Defaults to "direct". See the table at the top for supported type and import/export combinations.
+
+
+In addition, there are a number of BigQuery configuration options that can be specified in two ways: the traditional way using Spark's read/write options (e.g. `spark.read.option("bq.project", "<your_project>")`) and using the `bigquery` extension method (`spark.read.bigquery(config)`; see example above) which is usually more straightforward to use. If you prefer the traditional way or if you are using spark-bigquery in a non-Scala environment (e.g. PySpark), the configuration keys are as follows:
+
+* `bq.project` (required): Google BigQuery billing project id
+* `bq.location` (required): Geographic location where newly created datasets should reside. "EU" or "US".
+* `bq.service_account_key_file` (optional): Google Cloud service account key file to use for authentication with Google Cloud services. The use of service accounts is highly recommended. Specifically, the service account will be used to interact with BigQuery and Google Cloud Storage (GCS). If not specified, application default credentials will be used.
+* `bq.staging_dataset.name` (optional): Prefix of BigQuery staging dataset. A staging dataset is used to temporarily store the results of SQL queries. Defaults to "spark_staging".
+* `bq.staging_dataset.lifetime` (optional): Default staging dataset table lifetime in milliseconds. Tables are automatically deleted once the lifetime has been reached. Defaults to 86400000 ms (= 1 day).
+* `bq.staging_dataset.gcs_bucket` (required): Google Cloud Storage (GCS) bucket to use for storing temporary files. Temporary files are used when importing through BigQuery load jobs and exporting through BigQuery extraction jobs (i.e. when using data extracts such as Parquet, Avro, ORC, ...). The service account specified in `bq.service_account_key_file` needs to be given appropriate rights.
+* `bq.job.priority` (optional): BigQuery job priority when executing SQL queries. Options include "interactive" and "batch". Defaults to "interactive", i.e. the query is executed as soon as possible.
+* `bq.job.timeout` (optional): Timeout in milliseconds after which a file import/export job should be considered as failed. Defaults to 3600000 ms (= 1 h).
+
+
+See the following resources for more information:
+* [BigQuery pricing](https://cloud.google.com/bigquery/pricing)
+* [BigQuery dataset locations](https://cloud.google.com/bigquery/docs/dataset-locations)
+* [General authentication](https://cloud.google.com/docs/authentication/)
+* [BigQuery authentication](https://cloud.google.com/bigquery/docs/authentication/)
+* [Cloud Storage authentication](https://cloud.google.com/storage/docs/authentication/)
 
 
 ## Schema Conversion

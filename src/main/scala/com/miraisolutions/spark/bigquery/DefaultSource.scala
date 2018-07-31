@@ -21,6 +21,7 @@
 
 package com.miraisolutions.spark.bigquery
 
+import com.google.cloud.hadoop.fs.gcs.{GoogleHadoopFS, GoogleHadoopFileSystem}
 import com.miraisolutions.spark.bigquery.FileFormat.CSV
 import com.miraisolutions.spark.bigquery.client.BigQueryClient
 import com.miraisolutions.spark.bigquery.config.BigQueryConfig
@@ -62,20 +63,12 @@ class DefaultSource extends RelationProvider with CreatableRelationProvider with
       parameters.foldType[Unit](client.writeTable(data, table, mode)) { format =>
         val stagingDirectory = client.getStagingDirectory()
 
-        val opts: Map[String, String] = format match {
-          case CSV =>
-            Map("header" -> "true")
-
-          case _ =>
-            Map.empty
-        }
-
         // Use TIMESTAMP_MICROS in Parquet (supported since Spark 2.3.0)
         sqlContext.setConf("spark.sql.parquet.outputTimestampType", "TIMESTAMP_MICROS")
 
         data.write
           .format(format.sparkFormatIdentifier)
-          .options(opts)
+          .options(getFormatOptions(format))
           .save(stagingDirectory)
 
         client.importTable(stagingDirectory, format, table, mode)
@@ -111,13 +104,28 @@ private[bigquery] object DefaultSource {
     * @see [[https://github.com/GoogleCloudPlatform/bigdata-interop/blob/master/gcs/INSTALL.md]]
     */
   private def initHadoop(conf: Configuration, project: String, serviceAccountKeyFile: Option[String]): Unit = {
-    conf.set("fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
-    conf.set("fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS")
+    conf.set("fs.gs.impl", classOf[GoogleHadoopFileSystem].getName)
+    conf.set("fs.AbstractFileSystem.gs.impl", classOf[GoogleHadoopFS].getName)
     conf.set("fs.gs.project.id", project)
 
     serviceAccountKeyFile foreach { file =>
       conf.set("google.cloud.auth.service.account.enable", "true")
       conf.set("google.cloud.auth.service.account.json.keyfile", file)
+    }
+  }
+
+  /**
+    * Determines Spark options to be provided for a particular file format
+    * @param format File format
+    * @return Spark import/export options
+    */
+  private def getFormatOptions(format: FileFormat): Map[String, String] = {
+    format match {
+      case CSV =>
+        Map("header" -> "true")
+
+      case _ =>
+        Map.empty
     }
   }
 
@@ -130,21 +138,12 @@ private[bigquery] object DefaultSource {
     */
   private def getStagingDataFileRelation(sqlContext: SQLContext, stagingDirectory: String,
                                          format: FileFormat): BaseRelation = {
-
-    val opts: Map[String, String] = format match {
-      case CSV =>
-        Map("header" -> "true")
-
-      case _ =>
-        Map.empty
-    }
-
     val dataSource = DataSource(
       sparkSession = sqlContext.sparkSession,
       className = format.sparkFormatIdentifier,
       paths = List(stagingDirectory),
       userSpecifiedSchema = None,
-      options = opts
+      options = getFormatOptions(format)
     )
 
     dataSource.resolveRelation(true)

@@ -3,8 +3,9 @@ import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
 import com.typesafe.sbt.license.{DepModuleInfo, LicenseInfo}
 import ReleaseTransformations._
+import sbtrelease.{Version, versionFormatError}
 
-import scala.xml.{Node => XmlNode, NodeSeq => XmlNodeSeq, Elem}
+import scala.xml.{Elem, Node => XmlNode, NodeSeq => XmlNodeSeq}
 import scala.xml.transform._
 
 // Apache Spark version setting
@@ -12,6 +13,9 @@ val sparkVersion = settingKey[String]("The version of Spark to use.")
 
 // Custom task for creating a Spark package release artifact
 val sparkPackage = taskKey[File]("Creates a Spark package release artifact.")
+
+// Setting Maven properties as needed by gcs-connector
+val mavenProps = settingKey[Unit]("Setting Maven properties")
 
 lazy val commonSettings = Seq(
   // Name must match github repository name
@@ -32,11 +36,15 @@ lazy val commonSettings = Seq(
   )
 )
 
-// Dependencies that clash with Spark
+// Dependency exclusions
 lazy val exclusions = Seq(
+  // Clash with Spark
   ExclusionRule("com.fasterxml.jackson.core", "jackson-core"),
   ExclusionRule("commons-logging", "commons-logging"),
-  ExclusionRule("commons-lang", "commons-lang")
+  ExclusionRule("commons-lang", "commons-lang"),
+  // Not required
+  ExclusionRule("com.google.auto.value", "auto-value"),
+  ExclusionRule("com.google.auto.value", "auto-value-annotations")
 )
 
 // Spark provided dependencies
@@ -48,8 +56,8 @@ lazy val sparkDependencies = Def.setting(Seq(
 
 // Dependencies which need to be shaded to run on Google Cloud Dataproc
 lazy val dependenciesToShade = Seq(
-  "com.google.cloud" % "google-cloud-bigquery" % "1.35.0" excludeAll(exclusions: _*),
-  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.8.1-hadoop2" excludeAll(exclusions: _*)
+  "com.google.cloud" % "google-cloud-bigquery" % "1.37.1" excludeAll(exclusions: _*),
+  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.9.3-hadoop2" excludeAll(exclusions: _*)
 )
 
 // Dependencies which don't need any shading
@@ -80,6 +88,11 @@ lazy val root = (project in file("."))
     libraryDependencies := dependenciesToShade ++ sparkDependencies.value ++
       nonShadedDependencies.map(_ % "provided") ++ testDependencies.value,
     skip in publish := true,
+    mavenProps := {
+      // Required by gcs-connector
+      sys.props("hadoop.identifier") = "hadoop2"
+      ()
+    },
 
     Defaults.itSettings,
     IntegrationTest / fork := true,
@@ -96,16 +109,15 @@ lazy val root = (project in file("."))
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false),
     // Shade google dependencies due to version mismatches with dependencies deployed on Google Dataproc
     assemblyShadeRules in assembly := Seq(
-      ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
+      // ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
       ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
     ),
     assemblyMergeStrategy in assembly := {
-      case PathList("META-INF", _) =>
-        MergeStrategy.discard
-      case PathList("META-INF", "maven", _*) =>
-        MergeStrategy.discard
-      case _ =>
-        MergeStrategy.singleOrError
+      case PathList("META-INF", "services", "org.apache.hadoop.fs.FileSystem") =>
+        // Take our "shaded" version
+        MergeStrategy.first
+      case r =>
+        MergeStrategy.defaultMergeStrategy(r)
     },
 
     // We release the distribution module only
@@ -154,6 +166,8 @@ lazy val root = (project in file("."))
 lazy val distribution = (project in file("distribution"))
   .settings(commonSettings: _*)
   .settings(
+    // Include the Scala binary version here
+    version := s"${(root / version).value}-s_${scalaBinaryVersion.value}",
     libraryDependencies := nonShadedDependencies,
     // Spark packages need the github organization name as the group ID
     organization := "miraisolutions",
@@ -186,9 +200,6 @@ lazy val distribution = (project in file("distribution"))
               case c if c.label == "artifactId" =>
                 <artifactId>{normalizedName.value}</artifactId>
 
-              case c if c.label == "version" =>
-                <version>{version.value}-s_{scalaBinaryVersion.value}</version>
-
               case c =>
                 c
             }
@@ -204,8 +215,7 @@ lazy val distribution = (project in file("distribution"))
     sparkPackage := {
       val jar = (Compile / packageBin).value
       val pom = makePom.value
-      val packageVersion = s"${version.value}-s_${scalaBinaryVersion.value}"
-      val packageName = s"${normalizedName.value}-$packageVersion"
+      val packageName = s"${normalizedName.value}-${version.value}"
       val zipFile = target.value / s"$packageName.zip"
       IO.delete(zipFile)
       IO.zip(Seq(jar -> s"$packageName.jar", pom -> s"$packageName.pom"), zipFile)
@@ -213,6 +223,9 @@ lazy val distribution = (project in file("distribution"))
       zipFile
     },
 
+    releaseVersion := { _ =>
+      Version((root / version).value).map(_.withoutQualifier.string).getOrElse(versionFormatError)
+    },
     releaseVersionFile := (ThisBuild / baseDirectory).value / "version.sbt",
     releaseProcess := Seq[ReleaseStep](
       checkSnapshotDependencies,
