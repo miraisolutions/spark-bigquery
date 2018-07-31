@@ -3,3 +3,5 @@ lib_managed
 project/project
 project/target
 target
+derby.log
+logs
