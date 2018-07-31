@@ -36,11 +36,15 @@ lazy val commonSettings = Seq(
   )
 )
 
-// Dependencies that clash with Spark
+// Dependency exclusions
 lazy val exclusions = Seq(
+  // Clash with Spark
   ExclusionRule("com.fasterxml.jackson.core", "jackson-core"),
   ExclusionRule("commons-logging", "commons-logging"),
-  ExclusionRule("commons-lang", "commons-lang")
+  ExclusionRule("commons-lang", "commons-lang"),
+  // Not required
+  ExclusionRule("com.google.auto.value", "auto-value"),
+  ExclusionRule("com.google.auto.value", "auto-value-annotations")
 )
 
 // Spark provided dependencies
@@ -53,7 +57,7 @@ lazy val sparkDependencies = Def.setting(Seq(
 // Dependencies which need to be shaded to run on Google Cloud Dataproc
 lazy val dependenciesToShade = Seq(
   "com.google.cloud" % "google-cloud-bigquery" % "1.37.1" excludeAll(exclusions: _*),
-  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.9.2-hadoop2" excludeAll(exclusions: _*)
+  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.9.3-hadoop2" excludeAll(exclusions: _*)
 )
 
 // Dependencies which don't need any shading
@@ -105,16 +109,15 @@ lazy val root = (project in file("."))
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false),
     // Shade google dependencies due to version mismatches with dependencies deployed on Google Dataproc
     assemblyShadeRules in assembly := Seq(
-      ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
+      // ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
       ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
     ),
     assemblyMergeStrategy in assembly := {
-      case PathList("META-INF", _) =>
-        MergeStrategy.discard
-      case PathList("META-INF", "maven", _*) =>
-        MergeStrategy.discard
-      case _ =>
-        MergeStrategy.singleOrError
+      case PathList("META-INF", "services", "org.apache.hadoop.fs.FileSystem") =>
+        // Take our "shaded" version
+        MergeStrategy.first
+      case r =>
+        MergeStrategy.defaultMergeStrategy(r)
     },
 
     // We release the distribution module only
