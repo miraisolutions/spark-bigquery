@@ -7,3 +7,5 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-license-report" % "1.2.0")
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.0.0")
 
 addSbtPlugin("com.github.gseitz" % "sbt-release" % "1.0.9")
+
+addSbtPlugin("org.tpolecat" % "tut-plugin" % "0.6.7")

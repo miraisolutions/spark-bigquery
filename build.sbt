@@ -3,6 +3,7 @@ import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
 import com.typesafe.sbt.license.{DepModuleInfo, LicenseInfo}
 import ReleaseTransformations._
+import sbtassembly.MappingSet
 import sbtrelease.{Version, versionFormatError}
 
 import scala.xml.{Elem, Node => XmlNode, NodeSeq => XmlNodeSeq}
@@ -81,12 +82,13 @@ def existsUrl(url: String): Boolean = {
 
 
 lazy val root = (project in file("."))
-  .enablePlugins(AssemblyPlugin, AutomateHeaderPlugin)
+  .enablePlugins(AssemblyPlugin, AutomateHeaderPlugin, TutPlugin)
   .configs(IntegrationTest)
   .settings(commonSettings: _*)
   .settings(
-    libraryDependencies := dependenciesToShade ++ sparkDependencies.value ++
-      nonShadedDependencies.map(_ % "provided") ++ testDependencies.value,
+    libraryDependencies ++= dependenciesToShade ++ sparkDependencies.value ++
+      nonShadedDependencies.map(_ % "provided") ++ testDependencies.value ++
+      sparkDependencies.value.map(_.withConfigurations(Some("tut"))),
     skip in publish := true,
     mavenProps := {
       // Required by gcs-connector
@@ -109,16 +111,23 @@ lazy val root = (project in file("."))
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false),
     // Shade google dependencies due to version mismatches with dependencies deployed on Google Dataproc
     assemblyShadeRules in assembly := Seq(
-      // ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
       ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
     ),
     assemblyMergeStrategy in assembly := {
       case PathList("META-INF", "services", "org.apache.hadoop.fs.FileSystem") =>
         // Take our "shaded" version
-        MergeStrategy.first
+        MergeStrategy.last // see also assembledMappings below
+      case PathList("META-INF", "services", "shaded.org.apache.hadoop.fs.FileSystem") =>
+        MergeStrategy.discard
       case r =>
         MergeStrategy.defaultMergeStrategy(r)
     },
+    assembledMappings in assembly := (assembledMappings in assembly).value :+
+      MappingSet(
+        None,
+        Vector(file("src/main/resources/META-INF/services/shaded.org.apache.hadoop.fs.FileSystem") ->
+          "META-INF/services/org.apache.hadoop.fs.FileSystem")
+      ),
 
     // We release the distribution module only
     releaseProcess := Seq.empty,
