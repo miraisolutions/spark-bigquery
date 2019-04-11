@@ -56,8 +56,9 @@ lazy val sparkDependencies = Def.setting(Seq(
 
 // Dependencies which need to be shaded to run on Google Cloud Dataproc
 lazy val dependenciesToShade = Seq(
-  "com.google.cloud" % "google-cloud-bigquery" % "1.37.1" excludeAll(exclusions: _*),
-  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.9.3-hadoop2" excludeAll(exclusions: _*)
+  "com.google.cloud" % "google-cloud-bigquery" % "1.63.0" excludeAll(exclusions: _*),
+  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.9.3-hadoop2" excludeAll(exclusions: _*),
+  "com.google.http-client" % "google-http-client-apache" % "2.0.0" excludeAll(exclusions: _*)
 )
 
 // Dependencies which don't need any shading
