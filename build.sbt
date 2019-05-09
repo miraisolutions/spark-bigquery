@@ -26,7 +26,7 @@ lazy val commonSettings = Seq(
   description := "A Google BigQuery Data Source for Apache Spark",
   startYear := Some(2018),
   licenses += ("MIT", new URL("https://opensource.org/licenses/MIT")),
-  sparkVersion := "2.3.0",
+  sparkVersion := "2.3.2",
   scalaVersion := "2.11.12",
   crossScalaVersions := Seq("2.11.12"),
   scalacOptions ++= Seq(
@@ -57,9 +57,9 @@ lazy val sparkDependencies = Def.setting(Seq(
 
 // Dependencies which need to be shaded to run on Google Cloud Dataproc
 lazy val dependenciesToShade = Seq(
-  "com.google.cloud" % "google-cloud-bigquery" % "1.63.0" excludeAll(exclusions: _*),
-  "com.google.cloud.bigdataoss" % "gcs-connector" % "1.9.3-hadoop2" excludeAll(exclusions: _*),
-  "com.google.http-client" % "google-http-client-apache" % "2.0.0" excludeAll(exclusions: _*)
+  "com.google.cloud" % "google-cloud-bigquery" % "1.73.0" excludeAll(exclusions: _*),
+  "com.google.cloud.bigdataoss" % "gcs-connector" % "hadoop2-1.9.5" excludeAll(exclusions: _*),
+  "com.google.http-client" % "google-http-client-apache" % "2.1.1" excludeAll(exclusions: _*)
 )
 
 // Dependencies which don't need any shading
@@ -70,7 +70,7 @@ lazy val nonShadedDependencies = Seq(
 // Test dependencies
 lazy val testDependencies = Def.setting(Seq(
   "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
-  "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion.value}_0.9.0" % "it,test",
+  "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion.value}_0.11.0" % "it,test",
   "org.apache.spark" %% "spark-hive" % sparkVersion.value % "it,test" // required by spark-testing-base
 ))
 
