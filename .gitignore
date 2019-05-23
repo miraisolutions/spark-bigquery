@@ -5,3 +5,4 @@ project/target
 target
 derby.log
 logs
+local.sbt
