@@ -108,7 +108,7 @@ where `<arguments>` are:
 
 ## Using the spark-bigquery Spark package
 
-spark-bigquery is available as Spark package from https://spark-packages.org/package/miraisolutions/spark-bigquery and as such via the Maven coordinates `miraisolutions:spark-bigquery:<version>`. You can simply specify the appropriate Maven coordinates with the `--packages` option when using the Spark shell or when using `spark-submit`.
+spark-bigquery is available as Spark package from https://spark-packages.org/package/miraisolutions/spark-bigquery and as such via the Maven coordinates `miraisolutions:spark-bigquery:<version>`. You can simply specify the appropriate Maven coordinates with the `--packages` option when using the Spark shell or when using `spark-submit`. Note that you need to use the version as specified in spark-packages, e.g. `0.1.1-s_2.11`
 
 ### Using the Spark Shell
 
