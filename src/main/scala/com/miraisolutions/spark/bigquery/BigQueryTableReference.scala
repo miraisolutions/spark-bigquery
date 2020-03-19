@@ -58,13 +58,11 @@ private object BigQueryTableReference {
     * @return BigQuery table reference
     */
   def apply(tableRef: String): BigQueryTableReference = {
-    try {
-      val Array(project, dataset, table) = tableRef.replace("`", "").split("\\.")
-      BigQueryTableReference(project, dataset, table)
-    } catch {
-      case _: MatchError =>
-        throw new ParseException("Failed to parse BigQuery table reference which needs to be of the form " +
-          "[projectId].[datasetId].[tableId]")
+    val tableId = raw"((.+:)?[\w_\-]+)\.([\w_\-]+)\.([\w_\-]+)".r
+    tableRef.replace("`", "") match {
+      case tableId(project, _, dataset, table) => BigQueryTableReference(project, dataset, table)
+      case _ => throw new ParseException("Failed to parse BigQuery table reference which needs to be of the form " +
+        "[projectId].[datasetId].[tableId]")
     }
   }
 
