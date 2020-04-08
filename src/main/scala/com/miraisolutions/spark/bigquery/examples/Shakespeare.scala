@@ -34,15 +34,20 @@ import com.miraisolutions.spark.bigquery.config._
   * target/scala-2.11/spark-bigquery-assembly-<version>.jar <arguments>`
   *
   * ==Google Cloud Dataproc==
+  * Login to service account:
+  * `gcloud auth activate-service-account --key-file=[KEY-FILE]`
+  *
+  * @see [[https://cloud.google.com/storage/docs/authentication#service_accounts]]
+  *
   * `gcloud dataproc jobs submit spark --cluster <cluster> --class
   * com.miraisolutions.spark.bigquery.examples.Shakespeare --jars
   * target/scala-2.11/spark-bigquery-assembly-<version>.jar -- <argument>`
   *
   * Where `<arguments>` are:
   *  1. Google BigQuery billing project ID
-  *  1. Google BigQuery dataset location (EU, US)
-  *  1. Google Cloud Storage (GCS) bucket where staging files will be located
-  *  1. Google Cloud service account key file (required when running outside of Google Cloud)
+  *  2. Google BigQuery dataset location (EU, US)
+  *  3. Google Cloud Storage (GCS) bucket where staging files will be located
+  *  4. Google Cloud service account key file (works only when run against local cluster)
   *
   * @see [[https://cloud.google.com/bigquery/public-data/]]
   * @see [[https://cloud.google.com/bigquery/docs/dataset-locations]]
@@ -67,7 +72,8 @@ object Shakespeare {
       stagingDataset = StagingDatasetConfig(
         gcsBucket = args(2) // Google Cloud Storage bucket for staging files
       ),
-      serviceAccountKeyFile = if(args.length > 3) Some(args(3)) else None // Google Cloud service account key file
+      // Google Cloud service account key file - works only in local cluster mode
+      serviceAccountKeyFile = if(args.length > 3) Some(args(3)) else None
     )
 
     // Read public shakespeare data table using direct import (streaming)

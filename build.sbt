@@ -25,7 +25,7 @@ lazy val commonSettings = Seq(
   description := "A Google BigQuery Data Source for Apache Spark",
   startYear := Some(2018),
   licenses += ("MIT", new URL("https://opensource.org/licenses/MIT")),
-  sparkVersion := "2.3.0",
+  sparkVersion := "2.4.5",
   scalaVersion := "2.11.12",
   crossScalaVersions := Seq("2.11.12"),
   scalacOptions ++= Seq(
@@ -56,7 +56,7 @@ lazy val sparkDependencies = Def.setting(Seq(
 
 // Dependencies which need to be shaded to run on Google Cloud Dataproc
 lazy val dependenciesToShade = Seq(
-  "com.google.cloud" % "google-cloud-bigquery" % "1.63.0" excludeAll(exclusions: _*),
+  "com.google.cloud" % "google-cloud-bigquery" % "1.108.1" excludeAll(exclusions: _*),
   "com.google.cloud.bigdataoss" % "gcs-connector" % "1.9.3-hadoop2" excludeAll(exclusions: _*),
   "com.google.http-client" % "google-http-client-apache" % "2.0.0" excludeAll(exclusions: _*)
 )
@@ -69,7 +69,7 @@ lazy val nonShadedDependencies = Seq(
 // Test dependencies
 lazy val testDependencies = Def.setting(Seq(
   "org.scalatest" %% "scalatest" % "3.0.5" % "it,test",
-  "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion.value}_0.9.0" % "it,test",
+  "com.holdenkarau" %% "spark-testing-base" % s"${sparkVersion.value}_0.14.0" % "it,test",
   "org.apache.spark" %% "spark-hive" % sparkVersion.value % "it,test" // required by spark-testing-base
 ))
 
@@ -111,6 +111,7 @@ lazy val root = (project in file("."))
     // Shade google dependencies due to version mismatches with dependencies deployed on Google Dataproc
     assemblyShadeRules in assembly := Seq(
       // ShadeRule.rename("com.google.cloud.hadoop.fs.**" -> "com.google.cloud.hadoop.fs.@1").inAll,
+      ShadeRule.rename("com.google.**" -> "shadehttpclient.@1").inLibrary("com.google.http-client" % "google-http-client-apache" % "2.0.0"),
       ShadeRule.rename("com.google.**" -> "shadegoogle.@1").inAll
     ),
     assemblyMergeStrategy in assembly := {

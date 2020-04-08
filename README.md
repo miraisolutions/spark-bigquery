@@ -61,7 +61,8 @@ val config = BigQueryConfig(
   stagingDataset = StagingDatasetConfig(
 	gcsBucket = "<gcs_bucket>" // Google Cloud Storage bucket for staging files
   ),
-  serviceAccountKeyFile = Some("<service_account_key_file>") // Google Cloud service account key file
+  // Google Cloud service account key file - works only in local cluster mode
+  serviceAccountKeyFile = if(args.length > 3) Some(args(3)) else None
 )
 
 // Read public shakespeare data table using direct import (streaming)
@@ -97,14 +98,18 @@ To run this example first compile and assembly using `sbt assembly`. Then run:
 
 **[Google Cloud Dataproc](https://cloud.google.com/dataproc/)**
 
+Login to service account (it needs to have permissions to access all resources):
+
+`gcloud auth activate-service-account --key-file=[KEY-FILE]`
+
+Run spark job:
+
 `gcloud dataproc jobs submit spark --cluster <cluster> --class com.miraisolutions.spark.bigquery.examples.Shakespeare --jars target/scala-2.11/spark-bigquery-assembly-<version>.jar -- <argument>`
 
 where `<arguments>` are:
 1. Google BigQuery billing project ID
 2. Google BigQuery dataset location (EU, US)
 3. Google Cloud Storage (GCS) bucket where staging files will be located
-4. Google Cloud service account key file (required when running outside of Google Cloud)
-
 
 ## Using the spark-bigquery Spark package
 
@@ -205,6 +210,10 @@ You can run this application using `spark-submit` in the following way:
 
 ### Using `gcloud dataproc jobs submit`
 
+Login to service account (it needs to have permissions to access all resources):
+
+`gcloud auth activate-service-account --key-file=[KEY-FILE]`
+
 Similar to the `spark-submit` example above, the Spark application can be submitted to Google Dataproc using
 
 `gcloud dataproc jobs submit spark --cluster <dataproc_cluster_name> --class com.example.Shakespeare --jars Shakespeare.jar --properties "spark.jars.packages=miraisolutions:spark-bigquery:<version>"`
@@ -301,8 +310,24 @@ When using intermediate GCS data extracts (Parquet, Avro, ORC, ...) the result d
 
 ## Authentication
 
-When running outside of the Google Cloud it is necessary to specify a service account JSON key file. Information on how to generate service account credentials can be found at https://cloud.google.com/storage/docs/authentication#service_accounts. The service account key file can either be passed directly via `BigQueryConfig` or it can be passed through an environment variable: `export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service_account_keyfile.json` (see https://cloud.google.com/docs/authentication/getting-started for more information). When running on Google Cloud, e.g. Google Cloud Dataproc, [application default credentials](https://developers.google.com/identity/protocols/application-default-credentials) may be used in which case it is not necessary to specify a service account key file.
+Providing key file is only possible in local cluster mode, since app deployed on GC will try to resolve a location on HDFS. 
+It's not a good practice to keep key files stored as cloud resource.
 
+If you need to run via gcloud you can authenticate with service account JSON file using:
+
+`gcloud auth activate-service-account --key-file=[KEY-FILE]`
+
+Using local cluster mode it is possible to provide the key file as an argument to the spark job.
+ 
+Information on how to generate service account credentials can be found at 
+https://cloud.google.com/storage/docs/authentication#service_accounts. 
+The service account key file can either be passed directly via `BigQueryConfig` or 
+it can be passed through an environment variable: 
+`export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service_account_keyfile.json` 
+(see https://cloud.google.com/docs/authentication/getting-started for more information). 
+When running on Google Cloud, e.g. Google Cloud Dataproc, 
+[application default credentials](https://developers.google.com/identity/protocols/application-default-credentials) 
+may be used in which case it is not necessary to specify a service account key file.
 
 ## License
 
